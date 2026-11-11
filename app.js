@@ -1,8 +1,5 @@
-// ============================================================================
-// DN SERVICIOS Y TECNOLOGÍAS - SISTEMA DE JUNIOR ALMIRÓN (CON CARGA POR TEXTO)
-// ============================================================================
 
-const PIN_ACCESO = "945166"; // Puedes cambiar el PIN de Junior aquí
+const PIN_ACCESO = "111"; 
 const TECNICO_NOMBRE = "JUNIOR ALMIRON";
 const AUTH_SESSION_KEY = "dn_junior_autenticado";
 const STORAGE_KEY = "dn_junior_db_v2";
