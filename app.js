@@ -1,12 +1,16 @@
-const PIN_ACCESO = "111";
+// ============================================================================
+// DN SERVICIOS Y TECNOLOGÍAS - SISTEMA DE JUNIOR ALMIRÓN (CON CARGA POR TEXTO)
+// ============================================================================
+
+const PIN_ACCESO = "945166"; // Puedes cambiar el PIN de Junior aquí
 const TECNICO_NOMBRE = "JUNIOR ALMIRON";
 const AUTH_SESSION_KEY = "dn_junior_autenticado";
-const STORAGE_KEY = "dn_junior_db_v1";
+const STORAGE_KEY = "dn_junior_db_v2";
 const DRIVE_URL_KEY = "dn_servicios_drive_url";
 
 const DEFAULT_DRIVE_URL = "https://script.google.com/macros/s/AKfycbxezjx2ilDKOrdGQXrE3bHUO3cnMnMFDoDl3FJ7SX1xGTU-HmLXqWHrNB3h2IzcIrPF-g/exec";
 
-
+// 287 REGISTROS HISTÓRICOS DE JUNIOR ALMIRÓN [ID, Fecha, Categoría, Marca, Modelo, Trabajo, Notas]
 const RAW_DATOS_JUNIOR = [
   ["REP-001", "20/07/2026", "Smartphone", "Samsung", "Galaxy A06", "Cambio de pantalla", "En DN Tecnología"],
   ["REP-002", "20/07/2026", "Smartphone", "Samsung", "Galaxy A34", "Cambio de pantalla", "En DN Tecnología"],
@@ -300,13 +304,13 @@ const RAW_DATOS_JUNIOR = [
 function deducirIntervencion(trabajo) {
   const t = (trabajo || "").toLowerCase();
   const lista = [];
-  if (t.includes("pantalla") || t.includes("táctil") || t.includes("display")) lista.push("Cambio de Pantalla / Módulo");
+  if (t.includes("pantalla") || t.includes("táctil") || t.includes("display") || t.includes("módulo")) lista.push("Cambio de Pantalla / Módulo");
   if (t.includes("pin") || t.includes("puerto de carga") || t.includes("placa de carga") || t.includes("línea de carga") || t.includes("flex de carga") || t.includes("flex carga")) lista.push("Pin de Carga / Placa de Carga");
-  if (t.includes("batería") || t.includes("tapa") || t.includes("housing") || t.includes("botón") || t.includes("botones") || t.includes("bisagra") || t.includes("cámara") || t.includes("flex power")) lista.push("Cambio de Batería / Flex / Carcasa");
-  if (t.includes("desbloqueo") || t.includes("frp") || t.includes("flasheo") || t.includes("firmware") || t.includes("desbrickeo")) lista.push("Desbloqueo / FRP / Flasheo");
-  if (t.includes("fpc") || t.includes("ic") || t.includes("pistas") || t.includes("resoldado") || t.includes("reinicio") || t.includes("sensor") || t.includes("micrófono") || t.includes("audio") || t.includes("señal")) lista.push("Microelectrónica / Placa / FPC");
-  if (t.includes("limpieza") || t.includes("mantenimiento") || t.includes("humedad") || t.includes("cartucho")) lista.push("Mantenimiento Físico / Limpieza");
-  if (t.includes("traspaso") || t.includes("recuperación de archivos") || t.includes("recuperación de fotos") || t.includes("office") || t.includes("ssd") || t.includes("software") || t.includes("flujo") || t.includes("firma digital")) lista.push("Software / Traspaso de Datos / Backup");
+  if (t.includes("batería") || t.includes("bateria") || t.includes("tapa") || t.includes("housing") || t.includes("botón") || t.includes("boton") || t.includes("botones") || t.includes("bisagra") || t.includes("cámara") || t.includes("flex power")) lista.push("Cambio de Batería / Flex / Carcasa");
+  if (t.includes("desbloqueo") || t.includes("frp") || t.includes("flasheo") || t.includes("firmware") || t.includes("desbrickeo") || t.includes("cuentas") || t.includes("iniciar")) lista.push("Desbloqueo / FRP / Flasheo");
+  if (t.includes("fpc") || t.includes("ic") || t.includes("pistas") || t.includes("resoldado") || t.includes("reinicio") || t.includes("sensor") || t.includes("micrófono") || t.includes("audio") || t.includes("señal") || t.includes("no encendía") || t.includes("no encendia")) lista.push("Microelectrónica / Placa / FPC");
+  if (t.includes("limpieza") || t.includes("mantenimiento") || t.includes("humedad") || t.includes("cartucho") || t.includes("cabezal") || t.includes("almohadilla")) lista.push("Mantenimiento Físico / Limpieza");
+  if (t.includes("traspaso") || t.includes("pasar datos") || t.includes("pasar todos los datos") || t.includes("sacar datos") || t.includes("recuperación") || t.includes("office") || t.includes("ssd") || t.includes("disco") || t.includes("sistema") || t.includes("software") || t.includes("flujo") || t.includes("actualizar")) lista.push("Software / Traspaso de Datos / Backup");
   if (t.includes("eléctrica") || t.includes("wifi") || t.includes("utp") || t.includes("ethernet") || t.includes("internet") || t.includes("led")) lista.push("Instalación / Redes / Electricidad");
   return lista.length > 0 ? lista.join(" + ") : "Reemplazo de Repuesto / Hardware";
 }
@@ -317,12 +321,14 @@ function deducirRepuestos(trabajo) {
   if (t.includes("cambio de pantalla") || t.includes("y pantalla")) rep.push("Módulo de Pantalla");
   if (t.includes("cambio de pin") || t.includes("pin de carga")) rep.push("Pin de Carga");
   if (t.includes("placa de carga")) rep.push("Placa de Carga");
-  if (t.includes("batería")) rep.push("Batería");
+  if (t.includes("batería") || t.includes("bateria")) rep.push("Batería");
   if (t.includes("tapa")) rep.push("Tapa Trasera");
   if (t.includes("housing")) rep.push("Housing / Carcasa");
-  if (t.includes("ssd")) rep.push("Disco SSD");
+  if (t.includes("ssd") || t.includes("cambiar disco")) rep.push("Disco SSD");
+  if (t.includes("cabezal")) rep.push("Cabezal");
+  if (t.includes("almohadilla")) rep.push("Almohadillas");
   if (t.includes("flex")) rep.push("Cable Flex");
-  return rep.length > 0 ? rep.join(" + ") : "Insumos de Taller";
+  return rep.length > 0 ? rep.join(" + ") : "Ninguno";
 }
 
 const DATOS_MAESTROS = RAW_DATOS_JUNIOR.map(([id, fecha, categoria, marca, modelo, trabajo, notas]) => ({
@@ -340,6 +346,7 @@ const DATOS_MAESTROS = RAW_DATOS_JUNIOR.map(([id, fecha, categoria, marca, model
 }));
 
 let servicios = [];
+let loteTemporal = [];
 let driveUrl = localStorage.getItem(DRIVE_URL_KEY) || DEFAULT_DRIVE_URL;
 
 function normalizarFecha(f) {
@@ -460,7 +467,6 @@ function cargarBaseDeDatos() {
   aplicarFiltros();
 }
 
-// Filtra y fusiona únicamente registros de Junior (REP-...)
 function fusionarConMaestros(listaEntrante) {
   const mapa = new Map();
   DATOS_MAESTROS.forEach((m) => mapa.set(m.id, m));
@@ -700,12 +706,180 @@ function formatearFechaInput(yyyy_mm_dd) {
   return `${d}/${m}/${y}`;
 }
 
-function generarNuevoID() {
+function generarNuevoID(offset = 1) {
   const maxNum = servicios.reduce((acc, s) => {
     const n = parseInt(String(s.id).replace(/\D/g, "")) || 0;
     return n > acc ? n : acc;
   }, 0);
-  return `REP-${String(maxNum + 1).padStart(3, "0")}`;
+  return `REP-${String(maxNum + offset).padStart(3, "0")}`;
+}
+
+// ============================================================================
+// MOTOR INTELIGENTE DE PROCESAMIENTO DE TEXTO SEMANAL (LOTE)
+// ============================================================================
+function obtenerLunesActualYYYYMMDD() {
+  const hoy = new Date();
+  const dia = hoy.getDay();
+  const diff = hoy.getDate() - dia + (dia === 0 ? -6 : 1);
+  const lunes = new Date(hoy.setDate(diff));
+  return lunes.toISOString().split("T")[0];
+}
+
+function sumarDiasAFecha(yyyy_mm_dd, dias) {
+  const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
+  const fecha = new Date(y, m - 1, d);
+  fecha.setDate(fecha.getDate() + dias);
+  const dd = String(fecha.getDate()).padStart(2, "0");
+  const mm = String(fecha.getMonth() + 1).padStart(2, "0");
+  const yyyy = fecha.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function analizarLineaServicio(lineaRaw, fechaActual) {
+  let texto = lineaRaw.replace(/^[-*•\d.)\s]+/, "").trim();
+  if (!texto) return null;
+
+  let notas = "";
+  const matchDeCliente = texto.match(/\s+(?:de|cliente:?)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]{2,25})$/i);
+  if (matchDeCliente) {
+    const posibleCliente = matchDeCliente[1].trim();
+    const palabrasTecnicas = ["pantalla", "bateria", "batería", "carga", "pin", "cabezal", "almohadilla", "almohadillas", "flex", "disco", "sistema", "office", "amarillo", "negro", "color", "software", "telefono", "teléfono", "placa", "camara", "cámara"];
+    if (!palabrasTecnicas.includes(posibleCliente.toLowerCase())) {
+      notas = posibleCliente.charAt(0).toUpperCase() + posibleCliente.slice(1);
+    }
+  }
+
+  const tLow = texto.toLowerCase();
+
+  // Detectar Marca
+  let marca = "Genérico";
+  if (tLow.includes("samsung") || /\b(a\d{2}[s]?|j\d|s2\d|m\d{2})\b/i.test(texto)) marca = "Samsung";
+  else if (tLow.includes("xiaomi") || tLow.includes("redmi") || tLow.includes("poco")) marca = "Xiaomi";
+  else if (tLow.includes("iphone") || tLow.includes("apple")) marca = "Apple";
+  else if (tLow.includes("motorola") || tLow.includes("moto ")) marca = "Motorola";
+  else if (tLow.includes("honor")) marca = "Honor";
+  else if (tLow.includes("realme")) marca = "Realme";
+  else if (tLow.includes("huawei")) marca = "Huawei";
+  else if (tLow.includes("tecno") || tLow.includes("spark")) marca = "Tecno";
+  else if (tLow.includes("nokia")) marca = "Nokia";
+  else if (tLow.includes("tcl")) marca = "TCL";
+  else if (tLow.includes("jbl")) marca = "JBL";
+  else if (tLow.includes("epson") || /\bl3\d{2,3}\b/i.test(texto)) marca = "Epson";
+  else if (tLow.includes("hp")) marca = "HP";
+  else if (tLow.includes("brother")) marca = "Brother";
+  else if (tLow.includes("acer")) marca = "Acer";
+  else if (tLow.includes("asus")) marca = "Asus";
+  else if (tLow.includes("dell")) marca = "Dell";
+  else if (tLow.includes("lenovo")) marca = "Lenovo";
+
+  // Detectar Categoría
+  let categoria = "Smartphone";
+  if (tLow.includes("impresora") || tLow.includes("epson") || tLow.includes("cabezal") || tLow.includes("almohadilla") || tLow.includes("cartucho")) {
+    categoria = "Impresora";
+  } else if (tLow.includes("laptop") || tLow.includes("notebook") || tLow.includes("acer") || tLow.includes("asus")) {
+    categoria = "Laptop";
+  } else if (tLow.includes("pc ") || tLow.includes("dell") || tLow.includes("office") || tLow.includes("sistema")) {
+    categoria = "PC / Software";
+  } else if (tLow.includes("disco hdd") || tLow.includes("sacar datos de disco")) {
+    categoria = "Almacenamiento";
+  } else if (tLow.includes("jbl") || tLow.includes("parlante") || tLow.includes("auricular")) {
+    categoria = "Audio / Parlante";
+  } else if (tLow.includes("tablet") || tLow.includes("ipad") || tLow.includes("pad")) {
+    categoria = "Tablet";
+  } else if (tLow.includes("nokia")) {
+    categoria = "Celular Básico";
+  }
+
+  // Detectar Modelo
+  let modelo = `${marca}`;
+  const matchTraspaso = texto.match(/([a-zA-Z0-9]+\s+a\s+[a-zA-Z0-9]+)/i);
+  const matchEpson = texto.match(/\b(L\d{3,4})\b/i);
+  const matchGalaxy = texto.match(/\b(Galaxy\s+[A-Z0-9]+|A\d{2}[a-z]?|S\d{2}\s*(?:FE|Plus|Ultra)?|J\d\s*(?:Neo|Pro)?|M\d{2})\b/i);
+  const matchRedmi = texto.match(/\b(Redmi\s*(?:Note\s*)?\d+[A-Za-z+]*|Poco\s*[A-Z0-9]+)\b/i);
+  const matchIphone = texto.match(/\b(iPhone\s*\d+\s*(?:Pro\s*Max|Pro|Plus|Mini|XR|XS)?)\b/i);
+  const matchMoto = texto.match(/\b(Moto\s*[A-Z0-9]+\s*(?:Power|Plus|Play)?)\b/i);
+
+  if (tLow.includes("a samsung") || tLow.includes("a redmi") || tLow.includes("a honor") || tLow.includes("a iphone")) {
+    if (tLow.includes("samsung a samsung")) modelo = "Samsung a Samsung";
+    else if (tLow.includes("redmi a redmi")) modelo = "Redmi a Redmi";
+    else if (tLow.includes("honor a honor")) modelo = "Honor a Honor";
+    else if (matchTraspaso) modelo = matchTraspaso[1];
+  } else if (matchEpson) {
+    modelo = `EcoTank ${matchEpson[1].toUpperCase()}`;
+  } else if (matchIphone) {
+    modelo = matchIphone[1];
+  } else if (matchRedmi) {
+    modelo = matchRedmi[1];
+  } else if (matchGalaxy) {
+    const g = matchGalaxy[1];
+    modelo = g.toLowerCase().startsWith("galaxy") ? g : `Galaxy ${g.toUpperCase()}`;
+  } else if (matchMoto) {
+    modelo = matchMoto[1];
+  } else if (categoria === "Almacenamiento") {
+    modelo = "Disco Duro HDD";
+  } else if (categoria === "Laptop") {
+    modelo = `Laptop ${marca}`;
+  } else if (categoria === "PC / Software") {
+    modelo = `PC ${marca}`;
+  } else if (marca === "JBL") {
+    modelo = "Parlante JBL";
+  } else if (categoria === "Smartphone" && marca === "Genérico") {
+    modelo = "Smartphone Android";
+  }
+
+  const trabajoLimpio = texto.charAt(0).toUpperCase() + texto.slice(1);
+  const intervencion = deducirIntervencion(trabajoLimpio);
+  const repuestos = deducirRepuestos(trabajoLimpio);
+
+  return {
+    fecha: fechaActual,
+    categoria,
+    marca,
+    modelo,
+    intervencion,
+    trabajo: trabajoLimpio,
+    repuestos,
+    estado: "Entregado",
+    notas,
+    tecnico: TECNICO_NOMBRE
+  };
+}
+
+function procesarTextoLote(textoCompleto, fechaLunesYYYYMMDD) {
+  const lineas = textoCompleto.split(/\r?\n/);
+  let fechaCurso = sumarDiasAFecha(fechaLunesYYYYMMDD, 0);
+  const resultados = [];
+
+  const mapaDias = [
+    { regex: /^lunes\b/i, offset: 0 },
+    { regex: /^martes\b/i, offset: 1 },
+    { regex: /^mi[eé]rcoles\b/i, offset: 2 },
+    { regex: /^jueves\b/i, offset: 3 },
+    { regex: /^viernes\b/i, offset: 4 },
+    { regex: /^s[aá]bado\b/i, offset: 5 },
+    { regex: /^domingo\b/i, offset: 6 }
+  ];
+
+  for (let raw of lineas) {
+    const l = raw.trim();
+    if (!l) continue;
+
+    // Verificar si la línea es un encabezado de día (Ej: "Lunes:" o "Martes")
+    let esDia = false;
+    for (const d of mapaDias) {
+      if (d.regex.test(l) && l.length < 20) {
+        fechaCurso = sumarDiasAFecha(fechaLunesYYYYMMDD, d.offset);
+        esDia = true;
+        break;
+      }
+    }
+    if (esDia) continue;
+
+    const item = analizarLineaServicio(l, fechaCurso);
+    if (item) resultados.push(item);
+  }
+
+  return resultados;
 }
 
 function configurarEventos() {
@@ -765,7 +939,7 @@ function configurarEventos() {
 
       const trabajoTxt = document.getElementById("inp-trabajo").value.trim();
       const nuevo = {
-        id: generarNuevoID(),
+        id: generarNuevoID(1),
         fecha: formatearFechaInput(document.getElementById("inp-fecha").value),
         categoria: document.getElementById("inp-categoria").value,
         marca: document.getElementById("inp-marca").value.trim(),
@@ -788,6 +962,97 @@ function configurarEventos() {
       if (driveUrl) {
         enviarFilaADrive(nuevo);
       }
+    });
+  }
+
+  // EVENTOS DEL MODAL DE CARGA RÁPIDA POR TEXTO (LOTE)
+  const modalLote = document.getElementById("modal-lote");
+  const btnCargaLote = document.getElementById("btn-carga-lote");
+  const btnCerrarLote = document.getElementById("btn-cerrar-lote");
+  const btnCancelarLote = document.getElementById("btn-cancelar-lote");
+  const btnAnalizarLote = document.getElementById("btn-analizar-lote");
+  const btnGuardarLote = document.getElementById("btn-guardar-lote");
+
+  const cerrarModalLote = () => {
+    if (modalLote) {
+      modalLote.classList.add("hidden");
+      modalLote.classList.remove("flex");
+    }
+  };
+
+  if (btnCargaLote && modalLote) {
+    btnCargaLote.addEventListener("click", () => {
+      document.getElementById("inp-lunes-lote").value = obtenerLunesActualYYYYMMDD();
+      document.getElementById("inp-texto-lote").value = "";
+      document.getElementById("contenedor-preview-lote").classList.add("hidden");
+      document.getElementById("resumen-lote").textContent = "";
+      btnGuardarLote.disabled = true;
+      loteTemporal = [];
+      modalLote.classList.remove("hidden");
+      modalLote.classList.add("flex");
+      inicializarIconos();
+    });
+  }
+  if (btnCerrarLote) btnCerrarLote.addEventListener("click", cerrarModalLote);
+  if (btnCancelarLote) btnCancelarLote.addEventListener("click", cerrarModalLote);
+
+  if (btnAnalizarLote) {
+    btnAnalizarLote.addEventListener("click", () => {
+      const texto = document.getElementById("inp-texto-lote").value.trim();
+      const lunesVal = document.getElementById("inp-lunes-lote").value || obtenerLunesActualYYYYMMDD();
+      if (!texto) return alert("Pega primero la lista de servicios de la semana.");
+
+      loteTemporal = procesarTextoLote(texto, lunesVal);
+      const tbodyPreview = document.getElementById("tbody-preview-lote");
+      const contPreview = document.getElementById("contenedor-preview-lote");
+      const resumen = document.getElementById("resumen-lote");
+
+      if (loteTemporal.length === 0) {
+        alert("No se detectaron líneas de servicio válidas.");
+        return;
+      }
+
+      resumen.textContent = `¡${loteTemporal.length} servicios detectados y clasificados!`;
+      tbodyPreview.innerHTML = loteTemporal
+        .map(
+          (item, i) => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2 px-3 font-semibold text-teal-700 whitespace-nowrap">${item.fecha}</td>
+            <td class="py-2 px-3">${item.categoria}</td>
+            <td class="py-2 px-3"><strong>${item.marca}</strong> · ${item.modelo}</td>
+            <td class="py-2 px-3 text-slate-600">${item.intervencion}</td>
+            <td class="py-2 px-3 text-slate-800">${item.trabajo}</td>
+            <td class="py-2 px-3 font-semibold text-teal-800">${item.notas || "-"}</td>
+          </tr>
+        `
+        )
+        .join("");
+
+      contPreview.classList.remove("hidden");
+      btnGuardarLote.disabled = false;
+    });
+  }
+
+  if (btnGuardarLote) {
+    btnGuardarLote.addEventListener("click", async () => {
+      if (!loteTemporal.length) return;
+      const nuevosConID = loteTemporal.map((item, idx) => ({
+        id: generarNuevoID(idx + 1),
+        ...item
+      }));
+
+      servicios.push(...nuevosConID);
+      guardarLocal();
+      poblarSelectores();
+      aplicarFiltros();
+      cerrarModalLote();
+
+      if (driveUrl) {
+        for (const reg of nuevosConID) {
+          await enviarFilaADrive(reg);
+        }
+      }
+      alert(`¡Se guardaron ${nuevosConID.length} servicios nuevos correctamente!`);
     });
   }
 
@@ -875,7 +1140,6 @@ async function enviarFilaADrive(registro) {
   }
 }
 
-// Sube los 287+ registros de Junior preservando los registros SER-... de Ángel en la misma hoja
 async function subirBaseCompletaADrive() {
   const urlInput = document.getElementById("inp-drive-url").value.trim();
   if (!urlInput) return alert("Pega la URL de tu Google Apps Script.");
