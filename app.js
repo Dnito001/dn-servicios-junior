@@ -1,13 +1,11 @@
-
-const PIN_ACCESO = "111"; 
+const PIN_ACCESO = "111";
 const TECNICO_NOMBRE = "JUNIOR ALMIRON";
-const AUTH_SESSION_KEY = "dn_junior_autenticado";
-const STORAGE_KEY = "dn_junior_db_v2";
+const AUTH_SESSION_KEY = "dn_junior_autenticado_v3";
+const STORAGE_KEY = "dn_junior_db_v4";
 const DRIVE_URL_KEY = "dn_servicios_drive_url";
 
 const DEFAULT_DRIVE_URL = "https://script.google.com/macros/s/AKfycbxezjx2ilDKOrdGQXrE3bHUO3cnMnMFDoDl3FJ7SX1xGTU-HmLXqWHrNB3h2IzcIrPF-g/exec";
 
-// 287 REGISTROS HISTÓRICOS DE JUNIOR ALMIRÓN [ID, Fecha, Categoría, Marca, Modelo, Trabajo, Notas]
 const RAW_DATOS_JUNIOR = [
   ["REP-001", "20/07/2026", "Smartphone", "Samsung", "Galaxy A06", "Cambio de pantalla", "En DN Tecnología"],
   ["REP-002", "20/07/2026", "Smartphone", "Samsung", "Galaxy A34", "Cambio de pantalla", "En DN Tecnología"],
@@ -298,10 +296,68 @@ const RAW_DATOS_JUNIOR = [
   ["REP-287", "07/11/2026", "Smartphone", "Samsung", "Galaxy A52", "Ajuste de conector FPC", ""]
 ];
 
+function obtenerDiaSemana(fechaDDMMYYYY) {
+  if (!fechaDDMMYYYY) return "";
+  const partes = String(fechaDDMMYYYY).trim().split("/");
+  if (partes.length !== 3) return "";
+  const [dd, mm, yyyy] = partes.map(Number);
+  if (!dd || !mm || !yyyy) return "";
+  const fechaObj = new Date(yyyy, mm - 1, dd);
+  if (isNaN(fechaObj.getTime())) return "";
+  const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  return dias[fechaObj.getDay()];
+}
+
+function formatearGuaranies(valor) {
+  if (!valor) return "";
+  const limpio = String(valor).replace(/\D/g, "");
+  if (!limpio) return "";
+  const num = parseInt(limpio, 10);
+  if (isNaN(num) || num <= 0) return "";
+  return num.toLocaleString("es-PY") + " Gs";
+}
+
+function obtenerMontoNumerico(precioStr) {
+  if (!precioStr) return 0;
+  const limpio = String(precioStr).replace(/\D/g, "");
+  return parseInt(limpio, 10) || 0;
+}
+
+function extraerPrecioDeTexto(linea) {
+  let texto = String(linea || "").trim();
+  let precioFormateado = "";
+
+  const regexExplicito = /(?:\s+[-–:]?\s*|\b)(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\s*(?:gs\.?|guaran[ií]es)\b\.?/i;
+  const regexMil = /(?:\s+[-–:]?\s*|\b)(\d{1,4})\s*mil\s*(?:gs\.?)?\s*$/i;
+  const regexMilesFinal = /\s+[-–:]?\s*(\d{1,3}(?:\.\d{3})+)\s*$/;
+
+  const mExplicito = texto.match(regexExplicito);
+  if (mExplicito) {
+    precioFormateado = formatearGuaranies(mExplicito[1]);
+    texto = texto.replace(mExplicito[0], " ").trim();
+  } else {
+    const mMil = texto.match(regexMil);
+    if (mMil) {
+      const monto = parseInt(mMil[1], 10) * 1000;
+      precioFormateado = formatearGuaranies(monto);
+      texto = texto.replace(mMil[0], " ").trim();
+    } else {
+      const mMiles = texto.match(regexMilesFinal);
+      if (mMiles) {
+        precioFormateado = formatearGuaranies(mMiles[1]);
+        texto = texto.replace(mMiles[0], " ").trim();
+      }
+    }
+  }
+
+  texto = texto.replace(/[-–:,\s]+$/, "").trim();
+  return { textoSinPrecio: texto, precio: precioFormateado };
+}
+
 function deducirIntervencion(trabajo) {
   const t = (trabajo || "").toLowerCase();
   const lista = [];
-  if (t.includes("pantalla") || t.includes("táctil") || t.includes("display") || t.includes("módulo")) lista.push("Cambio de Pantalla / Módulo");
+  if (t.includes("pantalla") || t.includes("táctil") || t.includes("display") || t.includes("módulo") || t.includes("modulo")) lista.push("Cambio de Pantalla / Módulo");
   if (t.includes("pin") || t.includes("puerto de carga") || t.includes("placa de carga") || t.includes("línea de carga") || t.includes("flex de carga") || t.includes("flex carga")) lista.push("Pin de Carga / Placa de Carga");
   if (t.includes("batería") || t.includes("bateria") || t.includes("tapa") || t.includes("housing") || t.includes("botón") || t.includes("boton") || t.includes("botones") || t.includes("bisagra") || t.includes("cámara") || t.includes("flex power")) lista.push("Cambio de Batería / Flex / Carcasa");
   if (t.includes("desbloqueo") || t.includes("frp") || t.includes("flasheo") || t.includes("firmware") || t.includes("desbrickeo") || t.includes("cuentas") || t.includes("iniciar")) lista.push("Desbloqueo / FRP / Flasheo");
@@ -315,36 +371,133 @@ function deducirIntervencion(trabajo) {
 function deducirRepuestos(trabajo) {
   const t = (trabajo || "").toLowerCase();
   const rep = [];
-  if (t.includes("cambio de pantalla") || t.includes("y pantalla")) rep.push("Módulo de Pantalla");
-  if (t.includes("cambio de pin") || t.includes("pin de carga")) rep.push("Pin de Carga");
+  if (t.includes("pantalla") || t.includes("módulo") || t.includes("modulo")) rep.push("Módulo de Pantalla");
+  if (t.includes("pin de carga") || t.includes("cambio de pin")) rep.push("Pin de Carga");
   if (t.includes("placa de carga")) rep.push("Placa de Carga");
+  if (t.includes("flex de carga") || t.includes("flex carga")) rep.push("Flex de Carga");
+  else if (t.includes("flex")) rep.push("Cable Flex");
   if (t.includes("batería") || t.includes("bateria")) rep.push("Batería");
   if (t.includes("tapa")) rep.push("Tapa Trasera");
   if (t.includes("housing")) rep.push("Housing / Carcasa");
   if (t.includes("ssd") || t.includes("cambiar disco")) rep.push("Disco SSD");
   if (t.includes("cabezal")) rep.push("Cabezal");
   if (t.includes("almohadilla")) rep.push("Almohadillas");
-  if (t.includes("flex")) rep.push("Cable Flex");
   return rep.length > 0 ? rep.join(" + ") : "Ninguno";
 }
 
-const DATOS_MAESTROS = RAW_DATOS_JUNIOR.map(([id, fecha, categoria, marca, modelo, trabajo, notas]) => ({
-  id,
-  fecha,
-  categoria,
-  marca,
-  modelo,
-  intervencion: deducirIntervencion(trabajo),
-  trabajo,
-  repuestos: deducirRepuestos(trabajo),
-  estado: "Entregado",
-  notas,
-  tecnico: TECNICO_NOMBRE
-}));
+const DATOS_MAESTROS = RAW_DATOS_JUNIOR.map(([id, fecha, categoria, marca, modelo, trabajo, notas]) => {
+  const extNotas = extraerPrecioDeTexto(notas);
+  return {
+    id,
+    fecha,
+    categoria,
+    marca,
+    modelo,
+    intervencion: deducirIntervencion(trabajo),
+    trabajo,
+    repuestos: deducirRepuestos(trabajo),
+    precio: extNotas.precio || "",
+    estado: "Entregado",
+    notas: extNotas.precio ? extNotas.textoSinPrecio : notas,
+    tecnico: TECNICO_NOMBRE
+  };
+});
 
 let servicios = [];
 let loteTemporal = [];
 let driveUrl = localStorage.getItem(DRIVE_URL_KEY) || DEFAULT_DRIVE_URL;
+
+// ============================================================================
+// DETECTOR DE DUPLICADOS Y SERVICIOS REPETIDOS EN LA MISMA FECHA
+// ============================================================================
+function limpiarTextoComparacion(str) {
+  return String(str || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function verificarDuplicadoIndividual(nuevoItem) {
+  const fNueva = normalizarFecha(nuevoItem.fecha);
+  const marcaNueva = limpiarTextoComparacion(nuevoItem.marca);
+  const modeloNuevo = limpiarTextoComparacion(nuevoItem.modelo);
+  const trabajoNuevo = limpiarTextoComparacion(nuevoItem.trabajo);
+  const intNueva = limpiarTextoComparacion(nuevoItem.intervencion);
+
+  const coincidencias = servicios.filter((s) => {
+    if (normalizarFecha(s.fecha) !== fNueva) return false;
+    const mMarca = limpiarTextoComparacion(s.marca) === marcaNueva;
+    const mModelo = limpiarTextoComparacion(s.modelo) === modeloNuevo;
+    const mTrabajo = limpiarTextoComparacion(s.trabajo) === trabajoNuevo;
+    const mInt = limpiarTextoComparacion(s.intervencion) === intNueva;
+
+    // Coincide en la misma fecha si es mismo equipo + mismo trabajo/intervención, o exactamente el mismo texto de servicio
+    return (mMarca && mModelo && (mTrabajo || mInt)) || (mModelo && mTrabajo);
+  });
+
+  return coincidencias;
+}
+
+function evaluarDuplicadosEnLote(listaLote) {
+  return listaLote.map((item, idx) => {
+    const fItem = normalizarFecha(item.fecha);
+    const marcaItem = limpiarTextoComparacion(item.marca);
+    const modeloItem = limpiarTextoComparacion(item.modelo);
+    const trabajoItem = limpiarTextoComparacion(item.trabajo);
+    const intItem = limpiarTextoComparacion(item.intervencion);
+
+    const alertas = [];
+
+    // 1. Buscar si ya existe en la Base de Datos guardada en esa misma fecha
+    const enBD = servicios.filter((s) => {
+      if (normalizarFecha(s.fecha) !== fItem) return false;
+      const mMarca = limpiarTextoComparacion(s.marca) === marcaItem;
+      const mModelo = limpiarTextoComparacion(s.modelo) === modeloItem;
+      const mTrabajo = limpiarTextoComparacion(s.trabajo) === trabajoItem;
+      return mMarca && mModelo && mTrabajo;
+    });
+
+    if (enBD.length > 0) {
+      alertas.push({
+        nivel: "rojo",
+        mensaje: `Ya registrado el ${fItem} en la base (${enBD.map((x) => x.id).join(", ")})`
+      });
+    }
+
+    // 2. Buscar si está repetido dentro de la misma nota semanal en la misma fecha
+    const repetidosEnNota = [];
+    listaLote.forEach((otro, otroIdx) => {
+      if (otroIdx === idx) return;
+      if (normalizarFecha(otro.fecha) !== fItem) return;
+
+      const mMarca = limpiarTextoComparacion(otro.marca) === marcaItem;
+      const mModelo = limpiarTextoComparacion(otro.modelo) === modeloItem;
+      const mTrabajo = limpiarTextoComparacion(otro.trabajo) === trabajoItem;
+      const mInt = limpiarTextoComparacion(otro.intervencion) === intItem;
+
+      if (mMarca && mModelo && mTrabajo) {
+        repetidosEnNota.push(`Fila #${otroIdx + 1} (Mismo equipo y mismo servicio el ${fItem})`);
+      } else if (mMarca && mModelo && mInt) {
+        repetidosEnNota.push(`Fila #${otroIdx + 1} (Mismo equipo con misma intervención el ${fItem})`);
+      } else if (mTrabajo && trabajoItem.length > 5) {
+        repetidosEnNota.push(`Fila #${otroIdx + 1} (Mismo servicio "${otro.trabajo}" repetido el ${fItem})`);
+      }
+    });
+
+    if (repetidosEnNota.length > 0) {
+      alertas.push({
+        nivel: "ambar",
+        mensaje: `Repetido en esta misma fecha con: ${repetidosEnNota.join(", ")}`
+      });
+    }
+
+    return {
+      ...item,
+      alertasDuplicado: alertas
+    };
+  });
+}
 
 function normalizarFecha(f) {
   if (!f) return "";
@@ -354,6 +507,8 @@ function normalizarFecha(f) {
     const partes = soloFecha.split("-");
     if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
   }
+  const matchGuion = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (matchGuion) return `${matchGuion[3]}/${matchGuion[2]}/${matchGuion[1]}`;
   return str;
 }
 
@@ -375,8 +530,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function normalizarRegistros(lista) {
   return lista.map((item) => {
-    const trabajoLimpio = (item.trabajo || "").replace(/Ajuste reflux de conector FPC/gi, "Ajuste y resoldado de conector FPC");
+    let trabajoRaw = (item.trabajo || "").replace(/Ajuste reflux de conector FPC/gi, "Ajuste y resoldado de conector FPC");
+    const extTrabajo = extraerPrecioDeTexto(trabajoRaw);
+    const extNotas = extraerPrecioDeTexto(item.notas || "");
+    const precioFinal = item.precio ? formatearGuaranies(item.precio) : (extTrabajo.precio || extNotas.precio || "");
+    const trabajoLimpio = extTrabajo.precio ? extTrabajo.textoSinPrecio : trabajoRaw;
+    const notasLimpias = (extNotas.precio && !item.precio) ? extNotas.textoSinPrecio : (item.notas || "").trim();
     const inter = item.intervencion ? item.intervencion.replace(/\/ Reflux/gi, "").trim() : deducirIntervencion(trabajoLimpio);
+
     return {
       id: item.id,
       fecha: normalizarFecha(item.fecha),
@@ -386,8 +547,9 @@ function normalizarRegistros(lista) {
       intervencion: inter,
       trabajo: trabajoLimpio,
       repuestos: item.repuestos || deducirRepuestos(trabajoLimpio),
+      precio: precioFinal,
       estado: item.estado || "Entregado",
-      notas: (item.notas || "").trim(),
+      notas: notasLimpias,
       tecnico: TECNICO_NOMBRE
     };
   });
@@ -517,7 +679,15 @@ function poblarSelectores() {
   selCat.innerHTML = '<option value="">Todas las categorías</option>' + categorias.map((c) => `<option value="${c}">${c}</option>`).join("");
   selMarca.innerHTML = '<option value="">Todas las marcas</option>' + marcas.map((m) => `<option value="${m}">${m}</option>`).join("");
   selInt.innerHTML = '<option value="">Todas las intervenciones</option>' + intervenciones.map((i) => `<option value="${i}">${i}</option>`).join("");
-  selFecha.innerHTML = '<option value="">Todas las fechas</option>' + fechas.map((f) => `<option value="${f}">${f}</option>`).join("");
+  selFecha.innerHTML =
+    '<option value="">Todas las fechas</option>' +
+    fechas
+      .map((f) => {
+        const dia = obtenerDiaSemana(f);
+        const cantidadEnFecha = servicios.filter((s) => s.fecha === f).length;
+        return `<option value="${f}">${f} (${dia} · ${cantidadEnFecha} serv.)</option>`;
+      })
+      .join("");
 
   selCat.value = valCat;
   selMarca.value = valMarca;
@@ -541,13 +711,17 @@ function aplicarFiltros() {
   const fecha = selFecha.value;
 
   const filtrados = servicios.filter((item) => {
+    const diaNombre = obtenerDiaSemana(item.fecha).toLowerCase();
     const coincideTexto =
       !texto ||
       item.id.toLowerCase().includes(texto) ||
       item.modelo.toLowerCase().includes(texto) ||
       item.trabajo.toLowerCase().includes(texto) ||
       (item.notas || "").toLowerCase().includes(texto) ||
-      item.marca.toLowerCase().includes(texto);
+      (item.precio || "").toLowerCase().includes(texto) ||
+      item.marca.toLowerCase().includes(texto) ||
+      item.fecha.toLowerCase().includes(texto) ||
+      diaNombre.includes(texto);
 
     const coincideCat = !cat || item.categoria === cat;
     const coincideMarca = !marca || item.marca === marca;
@@ -579,26 +753,50 @@ function renderizarVista(lista) {
 
   if (lista.length === 0) {
     const vacioHTML = `<div class="py-10 text-center text-slate-500 text-sm">No se encontraron servicios con los filtros seleccionados.</div>`;
-    if (tbody) tbody.innerHTML = `<tr><td colspan="9">${vacioHTML}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10">${vacioHTML}</td></tr>`;
     if (listaMovil) listaMovil.innerHTML = vacioHTML;
     return;
   }
+
+  // Contar ocurrencias de Fecha + Marca + Modelo + Trabajo para señalar servicios gemelos en el mismo día
+  const conteoGemelos = {};
+  lista.forEach((it) => {
+    const clave = `${it.fecha}|${limpiarTextoComparacion(it.marca)}|${limpiarTextoComparacion(it.modelo)}|${limpiarTextoComparacion(it.trabajo)}`;
+    conteoGemelos[clave] = (conteoGemelos[clave] || 0) + 1;
+  });
 
   const invertidos = [...lista].reverse();
 
   if (listaMovil) {
     listaMovil.innerHTML = invertidos
-      .map(
-        (item) => `
-        <div class="p-4 space-y-2 hover:bg-slate-50">
+      .map((item) => {
+        const dia = obtenerDiaSemana(item.fecha);
+        const clave = `${item.fecha}|${limpiarTextoComparacion(item.marca)}|${limpiarTextoComparacion(item.modelo)}|${limpiarTextoComparacion(item.trabajo)}`;
+        const esGemelo = conteoGemelos[clave] > 1;
+
+        return `
+        <div class="p-4 space-y-2 ${esGemelo ? "bg-amber-50/40" : "hover:bg-slate-50"}">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <span class="font-bold text-teal-700 text-sm">${item.id}</span>
-              <span class="text-xs text-slate-500">· ${item.fecha}</span>
+              <span class="text-xs font-semibold text-slate-700">· ${item.fecha}</span>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">${dia}</span>
+              ${
+                esGemelo
+                  ? `<span class="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-300" title="Servicio repetido en la misma fecha">⚠️ Servicio repetido en fecha (${conteoGemelos[clave]}x)</span>`
+                  : ""
+              }
             </div>
-            <button onclick="eliminarServicio('${item.id}')" class="text-slate-400 hover:text-rose-600 p-1">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
+            <div class="flex items-center gap-2">
+              ${
+                item.precio
+                  ? `<span class="text-xs font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">${item.precio}</span>`
+                  : ""
+              }
+              <button onclick="eliminarServicio('${item.id}')" class="text-slate-400 hover:text-rose-600 p-1">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </div>
           <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="font-bold text-slate-900 text-sm">${item.marca} <span class="font-normal text-slate-500">· ${item.modelo}</span></p>
@@ -613,18 +811,25 @@ function renderizarVista(lista) {
             <span class="text-teal-800 font-semibold">${item.notas || "-"}</span>
           </div>
         </div>
-      `
-      )
+      `;
+      })
       .join("");
   }
 
   if (tbody) {
     tbody.innerHTML = invertidos
-      .map(
-        (item) => `
-        <tr class="hover:bg-slate-50 transition">
+      .map((item) => {
+        const dia = obtenerDiaSemana(item.fecha);
+        const clave = `${item.fecha}|${limpiarTextoComparacion(item.marca)}|${limpiarTextoComparacion(item.modelo)}|${limpiarTextoComparacion(item.trabajo)}`;
+        const esGemelo = conteoGemelos[clave] > 1;
+
+        return `
+        <tr class="${esGemelo ? "bg-amber-50/40 hover:bg-amber-50/80" : "hover:bg-slate-50"} transition">
           <td class="py-3 px-4 font-bold text-teal-700 whitespace-nowrap">${item.id}</td>
-          <td class="py-3 px-4 text-slate-600 whitespace-nowrap">${item.fecha}</td>
+          <td class="py-3 px-4 whitespace-nowrap">
+            <div class="font-semibold text-slate-800">${item.fecha}</div>
+            <div class="text-[11px] font-bold text-indigo-600 uppercase tracking-wide">${dia}</div>
+          </td>
           <td class="py-3 px-4">
             <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-md border ${obtenerColorBadge(item.categoria)}">
               ${item.categoria}
@@ -635,8 +840,22 @@ function renderizarVista(lista) {
             <div class="text-xs text-slate-500">${item.modelo}</div>
           </td>
           <td class="py-3 px-4 text-xs font-medium text-slate-700 max-w-xs">${item.intervencion}</td>
-          <td class="py-3 px-4 text-slate-800 max-w-xs">${item.trabajo}</td>
+          <td class="py-3 px-4 text-slate-800 max-w-xs">
+            <div>${item.trabajo}</div>
+            ${
+              esGemelo
+                ? `<span class="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">⚠️ Mismo equipo y servicio en esta fecha (${conteoGemelos[clave]} disp.)</span>`
+                : ""
+            }
+          </td>
           <td class="py-3 px-4 text-xs text-slate-600">${item.repuestos || "Ninguno"}</td>
+          <td class="py-3 px-4 text-right whitespace-nowrap">
+            ${
+              item.precio
+                ? `<span class="inline-block text-xs font-extrabold px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">${item.precio}</span>`
+                : `<span class="text-xs text-slate-400">-</span>`
+            }
+          </td>
           <td class="py-3 px-4 text-xs font-semibold text-teal-800">${item.notas || "-"}</td>
           <td class="py-3 px-4 text-center">
             <button onclick="eliminarServicio('${item.id}')" class="text-slate-400 hover:text-rose-600 transition p-1" title="Eliminar registro">
@@ -644,8 +863,8 @@ function renderizarVista(lista) {
             </button>
           </td>
         </tr>
-      `
-      )
+      `;
+      })
       .join("");
   }
 
@@ -698,6 +917,12 @@ window.eliminarServicio = function (id) {
   aplicarFiltros();
 };
 
+window.quitarFilaDeLote = function (idx) {
+  loteTemporal.splice(idx, 1);
+  loteTemporal = evaluarDuplicadosEnLote(loteTemporal);
+  renderizarPreviewLote();
+};
+
 function formatearFechaInput(yyyy_mm_dd) {
   const [y, m, d] = yyyy_mm_dd.split("-");
   return `${d}/${m}/${y}`;
@@ -712,7 +937,7 @@ function generarNuevoID(offset = 1) {
 }
 
 // ============================================================================
-// MOTOR INTELIGENTE DE PROCESAMIENTO DE TEXTO SEMANAL (LOTE)
+// MOTOR INTELIGENTE DE PROCESAMIENTO DE TEXTO SEMANAL, EQUIPOS Y PRECIOS (GS)
 // ============================================================================
 function obtenerLunesActualYYYYMMDD() {
   const hoy = new Date();
@@ -732,25 +957,20 @@ function sumarDiasAFecha(yyyy_mm_dd, dias) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-function analizarLineaServicio(lineaRaw, fechaActual) {
-  let texto = lineaRaw.replace(/^[-*•\d.)\s]+/, "").trim();
-  if (!texto) return null;
+function normalizarFechaNumericaCorta(strFecha, anioBase) {
+  const partes = strFecha.replace(/-/g, "/").split("/");
+  const dd = String(partes[0]).padStart(2, "0");
+  const mm = String(partes[1]).padStart(2, "0");
+  let yyyy = partes[2] ? String(partes[2]) : String(anioBase);
+  if (yyyy.length === 2) yyyy = "20" + yyyy;
+  return `${dd}/${mm}/${yyyy}`;
+}
 
-  let notas = "";
-  const matchDeCliente = texto.match(/\s+(?:de|cliente:?)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]{2,25})$/i);
-  if (matchDeCliente) {
-    const posibleCliente = matchDeCliente[1].trim();
-    const palabrasTecnicas = ["pantalla", "bateria", "batería", "carga", "pin", "cabezal", "almohadilla", "almohadillas", "flex", "disco", "sistema", "office", "amarillo", "negro", "color", "software", "telefono", "teléfono", "placa", "camara", "cámara"];
-    if (!palabrasTecnicas.includes(posibleCliente.toLowerCase())) {
-      notas = posibleCliente.charAt(0).toUpperCase() + posibleCliente.slice(1);
-    }
-  }
-
+function detectarEquipoEnTexto(texto) {
   const tLow = texto.toLowerCase();
 
-  // Detectar Marca
-  let marca = "Genérico";
-  if (tLow.includes("samsung") || /\b(a\d{2}[s]?|j\d|s2\d|m\d{2})\b/i.test(texto)) marca = "Samsung";
+  let marca = "";
+  if (tLow.includes("samsung") || /\b(galaxy|a\d{2}[s]?|j\d|s2\d|m\d{2})\b/i.test(texto)) marca = "Samsung";
   else if (tLow.includes("xiaomi") || tLow.includes("redmi") || tLow.includes("poco")) marca = "Xiaomi";
   else if (tLow.includes("iphone") || tLow.includes("apple")) marca = "Apple";
   else if (tLow.includes("motorola") || tLow.includes("moto ")) marca = "Motorola";
@@ -769,7 +989,6 @@ function analizarLineaServicio(lineaRaw, fechaActual) {
   else if (tLow.includes("dell")) marca = "Dell";
   else if (tLow.includes("lenovo")) marca = "Lenovo";
 
-  // Detectar Categoría
   let categoria = "Smartphone";
   if (tLow.includes("impresora") || tLow.includes("epson") || tLow.includes("cabezal") || tLow.includes("almohadilla") || tLow.includes("cartucho")) {
     categoria = "Impresora";
@@ -787,12 +1006,11 @@ function analizarLineaServicio(lineaRaw, fechaActual) {
     categoria = "Celular Básico";
   }
 
-  // Detectar Modelo
-  let modelo = `${marca}`;
+  let modelo = "";
   const matchTraspaso = texto.match(/([a-zA-Z0-9]+\s+a\s+[a-zA-Z0-9]+)/i);
   const matchEpson = texto.match(/\b(L\d{3,4})\b/i);
-  const matchGalaxy = texto.match(/\b(Galaxy\s+[A-Z0-9]+|A\d{2}[a-z]?|S\d{2}\s*(?:FE|Plus|Ultra)?|J\d\s*(?:Neo|Pro)?|M\d{2})\b/i);
-  const matchRedmi = texto.match(/\b(Redmi\s*(?:Note\s*)?\d+[A-Za-z+]*|Poco\s*[A-Z0-9]+)\b/i);
+  const matchGalaxy = texto.match(/\b(Galaxy\s+[A-Z0-9]+(?:\s+(?:Core|Plus|Ultra|FE|5G|4G))*|A\d{2}[a-z]?(?:\s+5G)?|S\d{2}\s*(?:FE|Plus|Ultra)?|J\d\s*(?:Neo|Pro)?|M\d{2})\b/i);
+  const matchRedmiPoco = texto.match(/\b((?:Redmi|Poco)\s+[A-Za-z0-9]+(?:\s+(?:Note|Pro|Plus|Max|Ultra|5G|4G|S|C|\d+[A-Za-z+]*))*)\b/i);
   const matchIphone = texto.match(/\b(iPhone\s*\d+\s*(?:Pro\s*Max|Pro|Plus|Mini|XR|XS)?)\b/i);
   const matchMoto = texto.match(/\b(Moto\s*[A-Z0-9]+\s*(?:Power|Plus|Play)?)\b/i);
 
@@ -805,37 +1023,92 @@ function analizarLineaServicio(lineaRaw, fechaActual) {
     modelo = `EcoTank ${matchEpson[1].toUpperCase()}`;
   } else if (matchIphone) {
     modelo = matchIphone[1];
-  } else if (matchRedmi) {
-    modelo = matchRedmi[1];
+  } else if (matchRedmiPoco) {
+    modelo = matchRedmiPoco[1].replace(/\b(redmi|poco|note|pro|plus|max|ultra|5g|4g)\b/gi, (m) =>
+      m.length <= 2 ? m.toUpperCase() : m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()
+    );
   } else if (matchGalaxy) {
     const g = matchGalaxy[1];
     modelo = g.toLowerCase().startsWith("galaxy") ? g : `Galaxy ${g.toUpperCase()}`;
   } else if (matchMoto) {
     modelo = matchMoto[1];
-  } else if (categoria === "Almacenamiento") {
-    modelo = "Disco Duro HDD";
-  } else if (categoria === "Laptop") {
-    modelo = `Laptop ${marca}`;
-  } else if (categoria === "PC / Software") {
-    modelo = `PC ${marca}`;
-  } else if (marca === "JBL") {
-    modelo = "Parlante JBL";
-  } else if (categoria === "Smartphone" && marca === "Genérico") {
-    modelo = "Smartphone Android";
   }
 
-  const trabajoLimpio = texto.charAt(0).toUpperCase() + texto.slice(1);
-  const intervencion = deducirIntervencion(trabajoLimpio);
-  const repuestos = deducirRepuestos(trabajoLimpio);
+  return { tieneMarcaOModelo: Boolean(marca || modelo), categoria, marca: marca || "Genérico", modelo };
+}
+
+function contienePalabrasDeTrabajo(texto) {
+  const t = texto.toLowerCase();
+  const palabrasTrabajo = [
+    "placa de carga", "flex de carga", "flex carga", "pin de carga", "puerto de carga",
+    "cambio", "cambiar", "reparación", "reparacion", "reparar", "ajuste", "limpieza",
+    "mantenimiento", "desbloqueo", "frp", "flasheo", "pasar", "traspaso", "sacar",
+    "recuperar", "recuperación", "iniciar", "actualizar", "instalar", "instalación",
+    "configuración", "reset", "placa", "flex", "pin", "pantalla", "módulo", "modulo",
+    "batería", "bateria", "tapa", "housing", "botón", "boton", "cámara", "camara",
+    "cabezal", "almohadilla", "cartucho", "disco", "ssd", "hdd", "sistema", "office",
+    "no encendía", "no encendia", "humedad", "resoldado", "fpc", "ic", "micrófono",
+    "microfono", "auricular", "parlante", "software", "firmware", "recarga"
+  ];
+  return palabrasTrabajo.some((p) => t.includes(p));
+}
+
+function construirRegistroDesdeLinea(lineaTrabajoRaw, fechaActual, contextoEquipo) {
+  let textoLimpio = lineaTrabajoRaw.replace(/^[-*•\d.)\s]+/, "").trim();
+  if (!textoLimpio) return null;
+
+  const { textoSinPrecio, precio } = extraerPrecioDeTexto(textoLimpio);
+  let texto = textoSinPrecio || textoLimpio;
+
+  let notas = "";
+  const matchDeCliente = texto.match(/\s+(?:de|cliente:?)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]{2,25})$/i);
+  if (matchDeCliente) {
+    const posibleCliente = matchDeCliente[1].trim();
+    const palabrasTecnicas = [
+      "pantalla", "bateria", "batería", "carga", "pin", "cabezal", "almohadilla",
+      "almohadillas", "flex", "disco", "sistema", "office", "amarillo", "negro",
+      "color", "software", "telefono", "teléfono", "placa", "camara", "cámara", "datos"
+    ];
+    if (!palabrasTecnicas.includes(posibleCliente.toLowerCase())) {
+      notas = posibleCliente.charAt(0).toUpperCase() + posibleCliente.slice(1);
+    }
+  }
+
+  const eqDetectado = detectarEquipoEnTexto(texto);
+  let categoria = eqDetectado.categoria;
+  let marca = eqDetectado.marca;
+  let modelo = eqDetectado.modelo;
+
+  if (!eqDetectado.tieneMarcaOModelo && contextoEquipo) {
+    categoria = contextoEquipo.categoria;
+    marca = contextoEquipo.marca;
+    modelo = contextoEquipo.modelo;
+    if (!notas && contextoEquipo.notas) notas = contextoEquipo.notas;
+  } else {
+    if (!modelo) {
+      if (categoria === "Almacenamiento") modelo = "Disco Duro HDD";
+      else if (categoria === "Laptop") modelo = `Laptop ${marca}`;
+      else if (categoria === "PC / Software") modelo = `PC ${marca}`;
+      else if (marca === "JBL") modelo = "Parlante JBL";
+      else if (categoria === "Smartphone" && marca === "Genérico") modelo = "Smartphone Android";
+      else modelo = marca;
+    }
+  }
+
+  const trabajoFinal = texto.charAt(0).toUpperCase() + texto.slice(1);
+  const intervencion = deducirIntervencion(trabajoFinal);
+  const repuestos = deducirRepuestos(trabajoFinal);
 
   return {
     fecha: fechaActual,
+    diaSemana: obtenerDiaSemana(fechaActual),
     categoria,
     marca,
     modelo,
     intervencion,
-    trabajo: trabajoLimpio,
+    trabajo: trabajoFinal,
     repuestos,
+    precio: precio || "",
     estado: "Entregado",
     notas,
     tecnico: TECNICO_NOMBRE
@@ -844,7 +1117,9 @@ function analizarLineaServicio(lineaRaw, fechaActual) {
 
 function procesarTextoLote(textoCompleto, fechaLunesYYYYMMDD) {
   const lineas = textoCompleto.split(/\r?\n/);
+  const anioBase = fechaLunesYYYYMMDD.split("-")[0] || "2026";
   let fechaCurso = sumarDiasAFecha(fechaLunesYYYYMMDD, 0);
+  let contextoEquipoActual = null;
   const resultados = [];
 
   const mapaDias = [
@@ -858,25 +1133,253 @@ function procesarTextoLote(textoCompleto, fechaLunesYYYYMMDD) {
   ];
 
   for (let raw of lineas) {
-    const l = raw.trim();
+    let l = raw.trim();
     if (!l) continue;
 
-    // Verificar si la línea es un encabezado de día (Ej: "Lunes:" o "Martes")
-    let esDia = false;
+    const matchHeaderFecha = l.match(/^(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\s*:?$/);
+    if (matchHeaderFecha) {
+      fechaCurso = normalizarFechaNumericaCorta(matchHeaderFecha[1], anioBase);
+      contextoEquipoActual = null;
+      continue;
+    }
+
+    let cambioDia = false;
     for (const d of mapaDias) {
-      if (d.regex.test(l) && l.length < 20) {
-        fechaCurso = sumarDiasAFecha(fechaLunesYYYYMMDD, d.offset);
-        esDia = true;
+      if (d.regex.test(l)) {
+        const restoDespuesDeDia = l.replace(d.regex, "").replace(/^[\s:–-]+/, "").trim();
+        const matchFechaJuntoADia = restoDespuesDeDia.match(/^(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\s*:?\s*(.*)$/);
+
+        if (matchFechaJuntoADia) {
+          fechaCurso = normalizarFechaNumericaCorta(matchFechaJuntoADia[1], anioBase);
+          l = matchFechaJuntoADia[2].trim();
+        } else {
+          fechaCurso = sumarDiasAFecha(fechaLunesYYYYMMDD, d.offset);
+          l = restoDespuesDeDia;
+        }
+        contextoEquipoActual = null;
+        cambioDia = true;
         break;
       }
     }
-    if (esDia) continue;
+    if (cambioDia && !l) continue;
 
-    const item = analizarLineaServicio(l, fechaCurso);
-    if (item) resultados.push(item);
+    const matchFechaEnLinea = l.match(/^(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\s*[-:–]\s*(.+)$/);
+    if (matchFechaEnLinea) {
+      fechaCurso = normalizarFechaNumericaCorta(matchFechaEnLinea[1], anioBase);
+      l = matchFechaEnLinea[2].trim();
+    }
+
+    const { textoSinPrecio, precio } = extraerPrecioDeTexto(l);
+    const eqInfo = detectarEquipoEnTexto(textoSinPrecio);
+    const tieneTrabajo = contienePalabrasDeTrabajo(textoSinPrecio);
+
+    if (eqInfo.tieneMarcaOModelo && !tieneTrabajo && !precio) {
+      contextoEquipoActual = {
+        categoria: eqInfo.categoria,
+        marca: eqInfo.marca,
+        modelo: eqInfo.modelo || eqInfo.marca,
+        notas: ""
+      };
+      continue;
+    }
+
+    const item = construirRegistroDesdeLinea(l, fechaCurso, contextoEquipoActual);
+    if (item) {
+      if (eqInfo.tieneMarcaOModelo) {
+        contextoEquipoActual = {
+          categoria: item.categoria,
+          marca: item.marca,
+          modelo: item.modelo,
+          notas: item.notas
+        };
+      }
+      resultados.push(item);
+    }
   }
 
-  return resultados;
+  return evaluarDuplicadosEnLote(resultados);
+}
+
+// Renderiza la vista previa del lote incluyendo el banner de alerta de repetidos
+function renderizarPreviewLote() {
+  const tbodyPreview = document.getElementById("tbody-preview-lote");
+  const contPreview = document.getElementById("contenedor-preview-lote");
+  const contResumenDias = document.getElementById("contenedor-resumen-dias");
+  const gridResumenDias = document.getElementById("grid-resumen-dias");
+  const resumen = document.getElementById("resumen-lote");
+  const btnGuardarLote = document.getElementById("btn-guardar-lote");
+
+  // Crear contenedor de alerta de duplicados si no existe aún en el DOM
+  let cajaAlertaDup = document.getElementById("alerta-duplicados-lote");
+  if (!cajaAlertaDup && contResumenDias) {
+    cajaAlertaDup = document.createElement("div");
+    cajaAlertaDup.id = "alerta-duplicados-lote";
+    contResumenDias.parentNode.insertBefore(cajaAlertaDup, contResumenDias);
+  }
+
+  if (loteTemporal.length === 0) {
+    if (contResumenDias) contResumenDias.classList.add("hidden");
+    if (contPreview) contPreview.classList.add("hidden");
+    if (cajaAlertaDup) cajaAlertaDup.className = "hidden";
+    if (resumen) resumen.textContent = "Sin servicios en lista.";
+    if (btnGuardarLote) btnGuardarLote.disabled = true;
+    return;
+  }
+
+  const gruposPorFecha = {};
+  let sumaTotalLote = 0;
+  const itemsConAlerta = [];
+
+  loteTemporal.forEach((item, idx) => {
+    const monto = obtenerMontoNumerico(item.precio);
+    sumaTotalLote += monto;
+    if (!gruposPorFecha[item.fecha]) {
+      gruposPorFecha[item.fecha] = {
+        dia: item.diaSemana || obtenerDiaSemana(item.fecha),
+        fecha: item.fecha,
+        subtotalGs: 0,
+        items: []
+      };
+    }
+    gruposPorFecha[item.fecha].subtotalGs += monto;
+    gruposPorFecha[item.fecha].items.push({ ...item, idx });
+
+    if (item.alertasDuplicado && item.alertasDuplicado.length > 0) {
+      itemsConAlerta.push({ idx: idx + 1, ...item });
+    }
+  });
+
+  // Mostrar u ocultar el banner de Alerta por Servicios o Fechas Repetidas
+  if (cajaAlertaDup) {
+    if (itemsConAlerta.length > 0) {
+      cajaAlertaDup.className = "bg-amber-50 border-2 border-amber-400 rounded-xl p-4 space-y-2 shadow-sm";
+      cajaAlertaDup.innerHTML = `
+        <div class="flex items-start gap-2.5">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+          <div class="space-y-1 flex-1">
+            <h4 class="text-xs sm:text-sm font-extrabold text-amber-900 uppercase tracking-wide">
+              ⚠️ Alerta: Se detectaron ${itemsConAlerta.length} servicio(s) repetido(s) en la misma fecha
+            </h4>
+            <p class="text-xs text-amber-800">
+              Verifica si se cargó dos veces por error o si realmente se realizó el mismo servicio a dos dispositivos distintos en esa fecha. Puedes quitar una fila con el botón <strong>"Quitar"</strong> o continuar si son dos equipos diferentes:
+            </p>
+            <ul class="text-xs text-amber-950 space-y-1 pt-1">
+              ${itemsConAlerta
+                .map(
+                  (al) => `
+                  <li class="bg-white/90 px-2.5 py-1.5 rounded border border-amber-300 flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      <strong>Fila #${al.idx} (${al.fecha} · ${al.diaSemana}):</strong>
+                      ${al.marca} ${al.modelo} — <em>${al.trabajo}</em>
+                    </span>
+                    <span class="text-[11px] font-bold text-rose-700">
+                      ${al.alertasDuplicado.map((a) => a.mensaje).join(" | ")}
+                    </span>
+                  </li>
+                `
+                )
+                .join("")}
+            </ul>
+          </div>
+        </div>
+      `;
+    } else {
+      cajaAlertaDup.className = "hidden";
+      cajaAlertaDup.innerHTML = "";
+    }
+  }
+
+  gridResumenDias.innerHTML = Object.values(gruposPorFecha)
+    .map(
+      (g) => `
+      <div class="bg-indigo-50/60 border border-indigo-200 rounded-xl p-3.5 space-y-2">
+        <div class="flex items-center justify-between border-b border-indigo-200/70 pb-1.5">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-indigo-600 text-white font-extrabold text-xs uppercase">${g.dia}</span>
+            <span class="font-bold text-slate-800 text-xs">${g.fecha}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-semibold text-indigo-700">${g.items.length} serv.</span>
+            ${
+              g.subtotalGs > 0
+                ? `<span class="text-xs font-extrabold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">Total: ${formatearGuaranies(g.subtotalGs)}</span>`
+                : ""
+            }
+          </div>
+        </div>
+        <ul class="space-y-1.5 text-xs text-slate-700">
+          ${g.items
+            .map((it) => {
+              const tieneDup = it.alertasDuplicado && it.alertasDuplicado.length > 0;
+              return `
+              <li class="flex items-start justify-between gap-2 ${tieneDup ? "bg-amber-100/90 border-amber-400" : "bg-white/80 border-indigo-100"} p-2 rounded-lg border">
+                <div>
+                  <strong class="text-slate-900">#${it.idx + 1} · ${it.marca} · ${it.modelo}</strong>
+                  <span class="block text-slate-700">${it.trabajo}</span>
+                  <span class="text-[10px] text-indigo-700 font-semibold block">${it.intervencion}</span>
+                  ${
+                    tieneDup
+                      ? `<span class="text-[10px] font-extrabold text-rose-700 block mt-0.5">⚠️ ${it.alertasDuplicado.map((a) => a.mensaje).join(" | ")}</span>`
+                      : ""
+                  }
+                </div>
+                <div class="flex flex-col items-end gap-1">
+                  <span class="font-extrabold text-emerald-700 whitespace-nowrap">${it.precio || "-"}</span>
+                  <button type="button" onclick="quitarFilaDeLote(${it.idx})" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold">
+                    Quitar
+                  </button>
+                </div>
+              </li>
+            `;
+            })
+            .join("")}
+        </ul>
+      </div>
+    `
+    )
+    .join("");
+
+  const textoTotalGs = sumaTotalLote > 0 ? ` · Total: ${formatearGuaranies(sumaTotalLote)}` : "";
+  resumen.textContent = `¡${loteTemporal.length} servicio(s) en vista previa${textoTotalGs}!`;
+
+  tbodyPreview.innerHTML = loteTemporal
+    .map((item, idx) => {
+      const tieneDup = item.alertasDuplicado && item.alertasDuplicado.length > 0;
+      return `
+      <tr class="${tieneDup ? "bg-amber-50 hover:bg-amber-100/70" : "hover:bg-slate-50"}">
+        <td class="py-2 px-3 whitespace-nowrap">
+          <div class="font-bold text-teal-700">#${idx + 1} · ${item.fecha}</div>
+          <div class="text-[10px] font-extrabold uppercase text-indigo-600">${item.diaSemana}</div>
+        </td>
+        <td class="py-2 px-3 font-medium">${item.categoria}</td>
+        <td class="py-2 px-3"><strong>${item.marca}</strong> · ${item.modelo}</td>
+        <td class="py-2 px-3 text-indigo-700 font-semibold">${item.intervencion}</td>
+        <td class="py-2 px-3 text-slate-800">
+          <div>${item.trabajo}</div>
+          ${
+            tieneDup
+              ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 text-[10px] font-extrabold">⚠️ ${item.alertasDuplicado.map((a) => a.mensaje).join(" | ")}</span>`
+              : ""
+          }
+        </td>
+        <td class="py-2 px-3 text-right font-extrabold text-emerald-700 whitespace-nowrap">${item.precio || "-"}</td>
+        <td class="py-2 px-3">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-semibold text-teal-800">${item.notas || "-"}</span>
+            <button type="button" onclick="quitarFilaDeLote(${idx})" class="text-[11px] px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold" title="Quitar esta fila si es un error">
+              Quitar
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+    })
+    .join("");
+
+  contResumenDias.classList.remove("hidden");
+  contPreview.classList.remove("hidden");
+  btnGuardarLote.disabled = false;
+  inicializarIconos();
 }
 
 function configurarEventos() {
@@ -934,7 +1437,13 @@ function configurarEventos() {
       }
       errorInt.classList.add("hidden");
 
-      const trabajoTxt = document.getElementById("inp-trabajo").value.trim();
+      const trabajoRaw = document.getElementById("inp-trabajo").value.trim();
+      const ext = extraerPrecioDeTexto(trabajoRaw);
+      const inpPrecioEl = document.getElementById("inp-precio");
+      const precioInput = inpPrecioEl ? inpPrecioEl.value.trim() : "";
+      const precioFinal = precioInput ? formatearGuaranies(precioInput) : ext.precio;
+      const trabajoTxt = ext.precio ? ext.textoSinPrecio : trabajoRaw;
+
       const nuevo = {
         id: generarNuevoID(1),
         fecha: formatearFechaInput(document.getElementById("inp-fecha").value),
@@ -944,10 +1453,26 @@ function configurarEventos() {
         intervencion: checks.join(" + "),
         trabajo: trabajoTxt,
         repuestos: document.getElementById("inp-repuestos").value.trim() || deducirRepuestos(trabajoTxt),
+        precio: precioFinal,
         estado: "Entregado",
         notas: document.getElementById("inp-notas").value.trim(),
         tecnico: TECNICO_NOMBRE
       };
+
+      // Verificar si ya se cargó el mismo servicio en esa misma fecha
+      const duplicadosPrevios = verificarDuplicadoIndividual(nuevo);
+      if (duplicadosPrevios.length > 0) {
+        const detalleExistentes = duplicadosPrevios
+          .map((d) => `• ${d.id} (${d.fecha}): ${d.marca} ${d.modelo} - ${d.trabajo} ${d.precio ? `[${d.precio}]` : ""}`)
+          .join("\n");
+
+        const confirmar = confirm(
+          `⚠️ ALERTA DE SERVICIO REPETIDO EN LA MISMA FECHA (${nuevo.fecha}):\n\n` +
+            `Ya existe(n) registro(s) muy similar(es) en ese mismo día:\n${detalleExistentes}\n\n` +
+            `¿Confirmas que se realizó el mismo servicio a otro dispositivo distinto (Aceptar) o deseas cancelar por si fue un error (Cancelar)?`
+        );
+        if (!confirmar) return;
+      }
 
       servicios.push(nuevo);
       guardarLocal();
@@ -962,7 +1487,7 @@ function configurarEventos() {
     });
   }
 
-  // EVENTOS DEL MODAL DE CARGA RÁPIDA POR TEXTO (LOTE)
+  // EVENTOS DEL MODAL DE CARGA RÁPIDA Y CLASIFICADOR CON DETECTOR DE REPETIDOS
   const modalLote = document.getElementById("modal-lote");
   const btnCargaLote = document.getElementById("btn-carga-lote");
   const btnCerrarLote = document.getElementById("btn-cerrar-lote");
@@ -982,6 +1507,9 @@ function configurarEventos() {
       document.getElementById("inp-lunes-lote").value = obtenerLunesActualYYYYMMDD();
       document.getElementById("inp-texto-lote").value = "";
       document.getElementById("contenedor-preview-lote").classList.add("hidden");
+      document.getElementById("contenedor-resumen-dias").classList.add("hidden");
+      const cajaAlertaDup = document.getElementById("alerta-duplicados-lote");
+      if (cajaAlertaDup) cajaAlertaDup.className = "hidden";
       document.getElementById("resumen-lote").textContent = "";
       btnGuardarLote.disabled = true;
       loteTemporal = [];
@@ -997,46 +1525,45 @@ function configurarEventos() {
     btnAnalizarLote.addEventListener("click", () => {
       const texto = document.getElementById("inp-texto-lote").value.trim();
       const lunesVal = document.getElementById("inp-lunes-lote").value || obtenerLunesActualYYYYMMDD();
-      if (!texto) return alert("Pega primero la lista de servicios de la semana.");
+      if (!texto) return alert("Pega primero la lista de servicios.");
 
       loteTemporal = procesarTextoLote(texto, lunesVal);
-      const tbodyPreview = document.getElementById("tbody-preview-lote");
-      const contPreview = document.getElementById("contenedor-preview-lote");
-      const resumen = document.getElementById("resumen-lote");
-
       if (loteTemporal.length === 0) {
         alert("No se detectaron líneas de servicio válidas.");
         return;
       }
 
-      resumen.textContent = `¡${loteTemporal.length} servicios detectados y clasificados!`;
-      tbodyPreview.innerHTML = loteTemporal
-        .map(
-          (item, i) => `
-          <tr class="hover:bg-slate-50">
-            <td class="py-2 px-3 font-semibold text-teal-700 whitespace-nowrap">${item.fecha}</td>
-            <td class="py-2 px-3">${item.categoria}</td>
-            <td class="py-2 px-3"><strong>${item.marca}</strong> · ${item.modelo}</td>
-            <td class="py-2 px-3 text-slate-600">${item.intervencion}</td>
-            <td class="py-2 px-3 text-slate-800">${item.trabajo}</td>
-            <td class="py-2 px-3 font-semibold text-teal-800">${item.notas || "-"}</td>
-          </tr>
-        `
-        )
-        .join("");
-
-      contPreview.classList.remove("hidden");
-      btnGuardarLote.disabled = false;
+      renderizarPreviewLote();
     });
   }
 
   if (btnGuardarLote) {
     btnGuardarLote.addEventListener("click", async () => {
       if (!loteTemporal.length) return;
-      const nuevosConID = loteTemporal.map((item, idx) => ({
-        id: generarNuevoID(idx + 1),
-        ...item
-      }));
+
+      const repetidosActivos = loteTemporal.filter((it) => it.alertasDuplicado && it.alertasDuplicado.length > 0);
+      if (repetidosActivos.length > 0) {
+        const listaAlerta = repetidosActivos
+          .map((r) => `• ${r.fecha} (${r.diaSemana}): ${r.marca} ${r.modelo} - ${r.trabajo}`)
+          .join("\n");
+
+        const ok = confirm(
+          `⚠️ ATENCIÓN: Estás por guardar ${repetidosActivos.length} servicio(s) repetido(s) en la misma fecha:\n\n` +
+            `${listaAlerta}\n\n` +
+            `¿Confirmas que se trata de dispositivos distintos atendidos el mismo día (Aceptar) o prefieres volver para quitar alguno (Cancelar)?`
+        );
+        if (!ok) return;
+      }
+
+      const nuevosConID = loteTemporal.map((item, idx) => {
+        const copia = { ...item };
+        delete copia.diaSemana;
+        delete copia.alertasDuplicado;
+        return {
+          id: generarNuevoID(idx + 1),
+          ...copia
+        };
+      });
 
       servicios.push(...nuevosConID);
       guardarLocal();
@@ -1049,23 +1576,25 @@ function configurarEventos() {
           await enviarFilaADrive(reg);
         }
       }
-      alert(`¡Se guardaron ${nuevosConID.length} servicios nuevos correctamente!`);
+      alert(`¡Se guardaron ${nuevosConID.length} servicios correctamente!`);
     });
   }
 
   const btnExportar = document.getElementById("btn-exportar");
   if (btnExportar) {
     btnExportar.addEventListener("click", () => {
-      const encabezados = ["ID", "Fecha", "Categoría", "Marca", "Modelo", "Tipo de Intervención", "Trabajo Realizado", "Repuestos", "Estado", "Cliente / Notas"];
+      const encabezados = ["ID", "Fecha", "Día", "Categoría", "Marca", "Modelo", "Tipo de Intervención", "Trabajo Realizado", "Repuestos", "Precio (Gs)", "Estado", "Cliente / Notas"];
       const filas = servicios.map((s) => [
         s.id,
         s.fecha,
+        obtenerDiaSemana(s.fecha),
         s.categoria,
         s.marca,
         s.modelo,
         `"${s.intervencion}"`,
         `"${s.trabajo.replace(/"/g, '""')}"`,
         s.repuestos,
+        s.precio || "",
         s.estado,
         `"${(s.notas || "").replace(/"/g, '""')}"`
       ]);

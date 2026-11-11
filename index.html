@@ -46,7 +46,7 @@
             id="inp-password"
             inputmode="numeric"
             maxlength="6"
-            placeholder="••••••"
+            placeholder="•••"
             required
             autofocus
             class="w-full text-center tracking-[0.5em] text-2xl font-extrabold py-3 px-4 bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
@@ -186,10 +186,10 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div class="lg:col-span-1">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar (Modelo, Trabajo, Cliente)</label>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar (Modelo, Trabajo, Día, Precio)</label>
             <div class="relative">
               <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
-              <input type="text" id="filtro-texto" placeholder="Ej. A13, Pantalla, Derlis..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white" />
+              <input type="text" id="filtro-texto" placeholder="Ej. Lunes, Poco M4, 50.000..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white" />
             </div>
           </div>
 
@@ -215,7 +215,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Exacta</label>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Exacta (Día)</label>
             <select id="filtro-fecha" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white">
               <option value="">Todas las fechas</option>
             </select>
@@ -236,18 +236,19 @@
         <!-- VISTA MÓVIL (TARJETAS ADAPTABLES EN TELÉFONOS) -->
         <div id="lista-movil" class="block md:hidden divide-y divide-slate-200"></div>
 
-        <!-- VISTA ESCRITORIO Y TABLETS (TABLA DE 9 COLUMNAS) -->
+        <!-- VISTA ESCRITORIO Y TABLETS (TABLA DE 10 COLUMNAS CON PRECIO EN GS) -->
         <div class="hidden md:block overflow-x-auto custom-scroll">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-slate-800 text-slate-200 text-xs uppercase tracking-wider">
                 <th class="py-3 px-4 font-semibold">ID</th>
-                <th class="py-3 px-4 font-semibold">Fecha</th>
+                <th class="py-3 px-4 font-semibold">Fecha / Día</th>
                 <th class="py-3 px-4 font-semibold">Categoría</th>
                 <th class="py-3 px-4 font-semibold">Marca / Modelo</th>
                 <th class="py-3 px-4 font-semibold">Intervención</th>
                 <th class="py-3 px-4 font-semibold">Trabajo Realizado</th>
                 <th class="py-3 px-4 font-semibold">Insumos / Repuestos</th>
+                <th class="py-3 px-4 font-semibold text-right">Precio (Gs)</th>
                 <th class="py-3 px-4 font-semibold">Cliente / Notas</th>
                 <th class="py-3 px-4 font-semibold text-center">Acción</th>
               </tr>
@@ -280,7 +281,7 @@
       <form id="form-servicio" class="p-6 space-y-4 max-h-[85vh] overflow-y-auto custom-scroll">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Fecha *</label>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Fecha Numérica *</label>
             <input type="date" id="inp-fecha" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
           </div>
           <div>
@@ -309,7 +310,7 @@
           </div>
           <div>
             <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Modelo *</label>
-            <input type="text" id="inp-modelo" placeholder="Ej. Galaxy A13, Redmi Note 12, iPhone 13..." required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
+            <input type="text" id="inp-modelo" placeholder="Ej. Poco M4 Pro 5G, Galaxy A13..." required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
           </div>
         </div>
 
@@ -355,17 +356,21 @@
 
         <div>
           <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Descripción del Trabajo Realizado *</label>
-          <textarea id="inp-trabajo" rows="2" placeholder="Ej. Cambio de pantalla y desbloqueo FRP..." required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"></textarea>
+          <textarea id="inp-trabajo" rows="2" placeholder="Ej. Cambio de placa de carga o flex..." required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"></textarea>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Repuestos / Insumos</label>
-            <input type="text" id="inp-repuestos" placeholder="Ej. Módulo pantalla, Pin tipo C, Batería..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
+            <input type="text" id="inp-repuestos" placeholder="Ej. Placa de carga..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Cliente / Derivación / Notas</label>
-            <input type="text" id="inp-notas" placeholder="Ej. Derlis, Ana, Honorio..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
+            <label class="block text-xs font-bold uppercase text-emerald-700 mb-1">Precio (Gs)</label>
+            <input type="text" id="inp-precio" placeholder="Ej. 50.000 Gs" class="w-full px-3 py-2 border border-emerald-300 bg-emerald-50/40 rounded-lg text-sm font-semibold text-emerald-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Cliente / Notas</label>
+            <input type="text" id="inp-notas" placeholder="Ej. Derlis, Ana..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
           </div>
         </div>
 
@@ -383,13 +388,13 @@
 
   <!-- MODAL: CARGA RÁPIDA SEMANAL POR TEXTO / LOTE -->
   <div id="modal-lote" class="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
+    <div class="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
       <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-indigo-500/40 shrink-0">
         <div class="flex items-center gap-2">
           <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400"></i>
           <div>
-            <h3 class="font-bold text-base">Carga Rápida de Servicios por Texto (Semanal / Diario)</h3>
-            <p class="text-[11px] text-slate-400">Pega tu lista de la semana y el sistema clasificará marca, modelo, categoría e intervención automáticamente</p>
+            <h3 class="font-bold text-base">Carga Rápida Semanal con Extracción de Precios (Gs)</h3>
+            <p class="text-[11px] text-slate-400">Detecta el día, el equipo y extrae automáticamente el monto en guaraníes al final de cada servicio</p>
           </div>
         </div>
         <button id="btn-cerrar-lote" class="text-slate-400 hover:text-white">
@@ -400,60 +405,69 @@
       <div class="p-6 space-y-4 overflow-y-auto custom-scroll flex-1">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Fecha del Lunes de esa Semana *</label>
+            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Fecha numérica del Lunes de la semana *</label>
             <input type="date" id="inp-lunes-lote" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
           </div>
           <div class="text-xs text-slate-600 flex flex-col justify-center">
-            <p class="font-semibold text-slate-800">¿Cómo calcula las fechas?</p>
-            <p>Al escribir <strong>Lunes:</strong>, <strong>Martes:</strong>, <strong>Miércoles:</strong>, etc., asigna automáticamente la fecha exacta de cada día a partir del lunes elegido.</p>
+            <p class="font-semibold text-slate-800">Extracción automática de Guaraníes:</p>
+            <p>Puedes poner el modelo arriba y sus trabajos con monto abajo (ej. <strong>placa de carga 5.000gs</strong>, <strong>flex de carga 50.000gs</strong>) o todo en una misma línea.</p>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Pega aquí tu lista de trabajos realizados *</label>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Pega aquí tu nota semanal o diaria *</label>
           <textarea
             id="inp-texto-lote"
-            rows="7"
+            rows="6"
             placeholder="Ejemplo:
-Lunes:
-- Cambio de pantalla Samsung A13 de Derlis
-- Pasar datos de teléfono Samsung a Samsung
-- Cambio de pin de carga Redmi Note 11 de Ana
-Martes:
-- Desbloqueo FRP Motorola G15
-Miércoles:
-- Cambio de batería iPhone 12 de Honorio"
+lunes:
+Xiaomi poco M4 pro 5G
+placa de carga 5.000gs
+flex de carga 50.000gs
+
+martes:
+Samsung Galaxy A13 cambio de pantalla 120.000gs"
             class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono"
           ></textarea>
         </div>
 
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             id="btn-analizar-lote"
-            class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg shadow text-xs sm:text-sm transition"
+            class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-lg shadow text-xs sm:text-sm transition"
           >
             <i data-lucide="wand-2" class="w-4 h-4"></i>
-            Analizar y Previsualizar Servicios
+            Extraer Servicios, Fechas y Precios (Gs)
           </button>
-          <span id="resumen-lote" class="text-xs font-bold text-indigo-700"></span>
+          <span id="resumen-lote" class="text-xs font-bold text-emerald-700"></span>
+        </div>
+
+        <!-- DESGLOSE DE CLASIFICACIÓN POR DÍA Y SERVICIOS REALIZADOS -->
+        <div id="contenedor-resumen-dias" class="hidden space-y-3">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <i data-lucide="calendar-check" class="w-4 h-4 text-teal-600"></i>
+            Resumen Clasificado por Día y Montos en Guaraníes
+          </h4>
+          <div id="grid-resumen-dias" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
         </div>
 
         <!-- TABLA DE VISTA PREVIA DEL LOTE -->
         <div id="contenedor-preview-lote" class="hidden border border-slate-200 rounded-xl overflow-hidden">
           <div class="bg-slate-800 text-white px-4 py-2 text-xs font-bold uppercase tracking-wider flex items-center justify-between">
-            <span>Vista Previa antes de Guardar</span>
-            <span class="text-indigo-300">Verifica que todo esté en orden</span>
+            <span>Vista Previa de Filas a Guardar</span>
+            <span class="text-emerald-300">Verifica los montos en Gs antes de confirmar</span>
           </div>
           <div class="overflow-x-auto max-h-60 custom-scroll">
             <table class="w-full text-left border-collapse text-xs">
               <thead>
                 <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
-                  <th class="py-2 px-3">Fecha</th>
+                  <th class="py-2 px-3">Fecha / Día</th>
                   <th class="py-2 px-3">Categoría</th>
                   <th class="py-2 px-3">Marca / Modelo</th>
-                  <th class="py-2 px-3">Intervención Detectada</th>
-                  <th class="py-2 px-3">Trabajo</th>
+                  <th class="py-2 px-3">Intervención</th>
+                  <th class="py-2 px-3">Trabajo Realizado</th>
+                  <th class="py-2 px-3 text-right">Precio (Gs)</th>
                   <th class="py-2 px-3">Cliente</th>
                 </tr>
               </thead>
@@ -512,6 +526,6 @@ Miércoles:
     </div>
   </div>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
