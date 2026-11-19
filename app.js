@@ -1,6 +1,6 @@
 // ============================================================================
 // DN SERVICIOS Y TECNOLOGÍAS - SISTEMA DE JUNIOR ALMIRÓN (PIN: 111)
-// BASE SUPABASE (SQL) + EDICIÓN/BORRADO BLINDADO + CARGA RÁPIDA COMPLETA
+// BASE SUPABASE (SQL) + EXTRACCIÓN COMPLETA DE PRECIOS (GS) Y CLIENTES
 // ============================================================================
 
 const PIN_ACCESO = "111";
@@ -8,7 +8,7 @@ const TECNICO_NOMBRE = "JUNIOR ALMIRON";
 const AUTH_SESSION_KEY = "dn_junior_autenticado_supa_v1";
 const CACHE_LOCAL_KEY = "dn_junior_cache_supa_v1";
 
-// CREDENCIALES SUPABASE (clave publishable -> solo header apikey, sin Bearer JWT)
+// CREDENCIALES SUPABASE (clave publishable -> solo header apikey)
 const SUPABASE_URL = "https://fnnfcjmpobzbcjzwkuow.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Yy8MvXnSvj1SqivYCs630w_ahx4zwKF";
 
@@ -315,6 +315,74 @@ const RAW_DATOS_JUNIOR = [
   ["REP-287", "07/11/2026", "Smartphone", "Samsung", "Galaxy A52", "Ajuste de conector FPC", ""]
 ];
 
+// Nombres y clientes habituales en Paraguay / taller para detección sin separador
+const CLIENTES_BASE_CONOCIDOS = [
+  "ña graciela", "ña maria", "ña maría", "ña rosa", "ña marta", "ña carmen", "ña blasida",
+  "don carlos", "don juan", "don pedro", "don jose", "don josé", "don ramon", "don ramón",
+  "don julio", "don jorge", "don miguel", "don luis", "don victor", "don víctor", "don roberto",
+  "derlis", "ana", "honorio", "ever", "nancy", "graciela", "adalberto", "francisco", "troche",
+  "contaduría", "contaduria", "hospital", "fígaro", "figaro", "junior", "ángel", "angel",
+  "juan", "carlos", "pedro", "lucas", "marcos", "luis", "josé", "jose", "maría", "maria",
+  "jorge", "miguel", "diego", "ramón", "ramon", "julio", "césar", "cesar", "oscar", "óscar",
+  "víctor", "victor", "rubén", "ruben", "javier", "fernando", "alberto", "rodrigo", "cristian",
+  "cristhian", "christian", "sergio", "pablo", "raúl", "raul", "hugo", "néstor", "nestor",
+  "héctor", "hector", "gustavo", "richard", "edgar", "nelson", "camilo", "esteban", "fabián",
+  "fabian", "iván", "ivan", "matías", "matias", "nicolás", "nicolas", "sebastián", "sebastian",
+  "tomás", "tomas", "gabriel", "daniel", "david", "andrés", "andres", "antonio", "manuel",
+  "mario", "roberto", "eduardo", "ricardo", "alejandro", "ariel", "axel", "braian", "bryan",
+  "kevin", "jonathan", "alex", "elías", "elias", "walter", "wilson", "marcelo", "claudio",
+  "roque", "blas", "arnaldo", "alcides", "eligio", "eusebio", "fidel", "hilario", "isidro",
+  "lorenzo", "lucio", "marcial", "osvaldo", "patricio", "reinaldo", "rogelio", "silvio",
+  "rosa", "carmen", "laura", "sara", "claudia", "patricia", "mónica", "monica", "silvia",
+  "verónica", "veronica", "carolina", "gabriela", "andrea", "natalia", "paola", "liz",
+  "fátima", "fatima", "mirian", "miriam", "lourdes", "sonia", "gloria", "norma", "marta",
+  "martha", "elena", "ester", "esther", "raquel", "rebeca", "ruth", "eva", "olga", "blanca",
+  "zully", "celeste", "belén", "belen", "camila", "sofía", "sofia", "valentina", "romina",
+  "tamara", "vanesa", "vanessa", "jessica", "yesica", "yessica", "cintia", "cynthia", "diana",
+  "elizabeth", "karina", "liliana", "lorena", "marisol", "mercedes", "nadia", "noelia",
+  "pamela", "rocío", "rocio", "sandra", "susana", "teresa", "viviana", "yanina", "zulma",
+  "milagros", "daisy", "deisy", "leticia", "carmen", "mirta", "mirtha", "alicia", "beatriz",
+  "cecilia", "clara", "doris", "edith", "estela", "evelyn", "florencia", "gladys", "hilda",
+  "irene", "isabel", "jessica", "julia", "karen", "karla", "leidy", "lidia", "lilian",
+  "lucia", "lucía", "magali", "magalí", "marcela", "margarita", "mariela", "marina",
+  "marlene", "melissa", "miguelina", "milena", "nadia", "nelida", "nélida", "nidia", "noemi",
+  "noemí", "nora", "patricia", "paula", "perla", "ramona", "reina", "rosana", "roxana",
+  "selva", "stella", "tania", "tatiana", "valeria", "victoria", "virginia", "yeni", "yenny"
+];
+
+const PALABRAS_NO_CLIENTE = new Set([
+  "pantalla", "bateria", "batería", "carga", "pin", "cabezal", "almohadilla", "almohadillas",
+  "flex", "disco", "sistema", "office", "amarillo", "negro", "color", "software", "telefono",
+  "teléfono", "placa", "camara", "cámara", "datos", "modulo", "módulo", "tactil", "táctil",
+  "boton", "botón", "botones", "power", "volumen", "tapa", "housing", "carcasa", "fpc", "ic",
+  "pistas", "reinicio", "sensor", "microfono", "micrófono", "audio", "parlante", "speaker",
+  "señal", "senal", "humedad", "limpieza", "mantenimiento", "desbloqueo", "frp", "flasheo",
+  "firmware", "traspaso", "recuperacion", "recuperación", "archivos", "fotos", "wifi",
+  "internet", "utp", "ethernet", "led", "electrica", "eléctrica", "cartucho", "tinta",
+  "rodillo", "fusor", "engranajes", "bisagra", "bisagras", "teclado", "ssd", "hdd", "ram",
+  "windows", "drivers", "antena", "visor", "sellado", "original", "oled", "incell", "generico",
+  "genérico", "nuevo", "usado", "roto", "quebrado", "mojado", "cargaba", "encendia", "encendía",
+  "prende", "corto", "completo", "general", "preventivo", "express", "delivery", "accesorio",
+  "estuche", "antiquiebre", "vidrio", "templado", "iphone", "samsung", "xiaomi", "redmi",
+  "poco", "motorola", "moto", "honor", "realme", "huawei", "tecno", "nokia", "tcl", "jbl",
+  "epson", "hp", "brother", "acer", "asus", "dell", "lenovo", "galaxy", "tablet", "laptop",
+  "notebook", "impresora", "pc", "celular", "smartphone", "android", "5g", "4g", "pro",
+  "plus", "max", "ultra", "lite", "core", "mini", "fe", "neo", "play", "prime", "unidades",
+  "unidad", "metros", "cable", "ficha", "fuente", "poste", "vehiculo", "vehículo", "toyota",
+  "control", "radio", "portatil", "portátil", "auricular", "jack", "sim", "lector", "trackpad",
+  "huella", "trasera", "frontal", "verde", "blanca", "negra", "azul", "roja", "reprogramacion",
+  "reprogramación", "trasplante", "resoldado", "adaptacion", "adaptación", "configuracion",
+  "configuración", "instalacion", "instalación", "activacion", "activación", "optimizacion",
+  "optimización", "reparacion", "reparación", "cambio", "ajuste", "repegado", "re-pegado",
+  "retiro", "colocacion", "colocación", "solucion", "solución", "verificacion", "verificación",
+  "revision", "revisión", "diagnostico", "diagnóstico", "apagado", "fallo", "coaxial",
+  "firma", "digital", "parte", "tomacorriente", "humeda", "húmeda", "sin", "no", "con",
+  "encendido", "imagen", "sonido", "tinta", "recarga", "reset", "contador", "contadores",
+  "puerto", "linea", "línea", "conector", "chip", "cuenta", "cuentas", "google", "icloud",
+  "backup", "respaldo", "formateo", "formatear", "pulgadas", "externas", "luminaria",
+  "en", "dn", "tecnologia", "tecnología", "anotado", "como", "local", "taller"
+]);
+
 let servicios = [];
 let ultimosFiltrados = [];
 let loteTemporal = [];
@@ -354,7 +422,7 @@ function inicializarIconos() {
 }
 
 // ============================================================================
-// UTILIDADES DE FECHAS, PRECIOS Y TEXTO
+// UTILIDADES DE FECHAS, PRECIOS (GS) Y CLIENTES
 // ============================================================================
 function limpiarParaBusqueda(valor) {
   return String(valor ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
@@ -450,53 +518,244 @@ function normalizarFechaNumericaCorta(strFecha, anioBase) {
 
 function formatearGuaranies(valor) {
   if (!valor && valor !== 0) return "";
-  const limpio = String(valor).replace(/\D/g, "");
-  if (!limpio) return "";
-  const num = parseInt(limpio, 10);
+  const s = String(valor).trim();
+  const matchMil = s.match(/^(\d{1,4})\s*(?:mil|k)\s*(?:gs\.?)?$/i);
+  let num = 0;
+  if (matchMil) {
+    num = parseInt(matchMil[1], 10) * 1000;
+  } else {
+    const limpio = s.replace(/\D/g, "");
+    if (!limpio) return "";
+    num = parseInt(limpio, 10);
+  }
   if (isNaN(num) || num <= 0) return "";
   return num.toLocaleString("es-PY") + " Gs";
 }
 
 function obtenerMontoNumerico(precioStr) {
   if (!precioStr) return 0;
-  return parseInt(String(precioStr).replace(/\D/g, ""), 10) || 0;
+  const s = String(precioStr).trim();
+  const matchMil = s.match(/^(\d{1,4})\s*(?:mil|k)\s*(?:gs\.?)?$/i);
+  if (matchMil) return parseInt(matchMil[1], 10) * 1000;
+  return parseInt(s.replace(/\D/g, ""), 10) || 0;
 }
 
+// EXTRACTOR ROBUSTO DE PRECIOS EN GUARANÍES (cualquier posición y formato)
 function extraerPrecioDeTexto(linea) {
   let texto = String(linea || "").trim();
   let precioFormateado = "";
 
-  const regexParentesisGs = /\(\s*(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\s*(?:gs\.?|guaran[ií]es)\s*\)/i;
-  const regexExplicito = /(?:\s+[-–:]?\s*|\b)(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\s*(?:gs\.?|guaran[ií]es)\b\.?/i;
-  const regexMil = /(?:\s+[-–:]?\s*|\b)(\d{1,4})\s*mil\s*(?:gs\.?)?\s*$/i;
-  const regexMilesFinal = /\s+[-–:]?\s*(\d{1,3}(?:\.\d{3})+)\s*$/;
-
-  let m = texto.match(regexParentesisGs);
+  // 1. Entre paréntesis: (50.000 gs), (50.000), (120000), (50 mil), (120k)
+  let m = texto.match(/\(\s*(?:gs\.?|g\$|₲)?\s*(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\s*(?:gs\.?|guaran[ií]es|g\.?)?\s*\)/i);
   if (m) {
-    precioFormateado = formatearGuaranies(m[1]);
-    texto = texto.replace(m[0], " ").trim();
-  } else {
-    m = texto.match(regexExplicito);
+    const rawNum = parseInt(m[1].replace(/\D/g, ""), 10);
+    const tieneMoneda = /(?:gs|g\$|₲|guaran|\bg\b)/i.test(m[0]);
+    const tieneSep = /[.,]/.test(m[1]);
+    if (tieneMoneda || tieneSep || (rawNum >= 5000 && !(rawNum >= 1990 && rawNum <= 2039))) {
+      precioFormateado = formatearGuaranies(rawNum);
+      texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
+    }
+  }
+
+  if (!precioFormateado) {
+    m = texto.match(/\(\s*(\d{1,4})\s*(?:mil|k)\s*(?:gs\.?)?\s*\)/i);
     if (m) {
-      precioFormateado = formatearGuaranies(m[1]);
-      texto = texto.replace(m[0], " ").trim();
-    } else {
-      m = texto.match(regexMil);
-      if (m) {
-        precioFormateado = formatearGuaranies(parseInt(m[1], 10) * 1000);
-        texto = texto.replace(m[0], " ").trim();
-      } else {
-        m = texto.match(regexMilesFinal);
-        if (m) {
-          precioFormateado = formatearGuaranies(m[1]);
-          texto = texto.replace(m[0], " ").trim();
-        }
+      const rawNum = parseInt(m[1], 10) * 1000;
+      if (rawNum >= 1000) {
+        precioFormateado = formatearGuaranies(rawNum);
+        texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
       }
     }
   }
 
-  texto = texto.replace(/[-–:,\s]+$/, "").trim();
+  // 2. Prefijo de moneda: Gs. 50.000, Gs 50000, G$ 120.000, ₲50.000
+  if (!precioFormateado) {
+    m = texto.match(/(?:^|[\s\-–:=,/])(?:gs\.?|g\$|₲)\s*(\d{1,3}(?:[.,]\d{3})+|\d{4,9})(?=$|[\s\-–:,./)])/i);
+    if (m) {
+      precioFormateado = formatearGuaranies(m[1]);
+      texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
+    }
+  }
+
+  // 3. Sufijo explícito en cualquier lugar: 5.000gs, 50.000 gs, 120000gs, 50.000g (evita 5G/4G)
+  if (!precioFormateado) {
+    m = texto.match(/(?:^|[\s\-–:=,/])(\d{1,3}(?:[.,]\d{3})+|\d{4,9})\s*(?:gs\.?|guaran[ií]es|g\.?)(?=$|[\s\-–:,.)/])/i);
+    if (m) {
+      precioFormateado = formatearGuaranies(m[1]);
+      texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
+    }
+  }
+
+  // 4. Formato "mil" o "k" en cualquier posición: 50 mil, 120mil, 50k, 120k (evita 4k)
+  if (!precioFormateado) {
+    m = texto.match(/(?:^|[\s\-–:=,/])(\d{1,4})\s*mil(?:\s*gs\.?)?(?=$|[\s\-–:,.)/])/i);
+    if (m) {
+      precioFormateado = formatearGuaranies(parseInt(m[1], 10) * 1000);
+      texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
+    }
+  }
+
+  if (!precioFormateado) {
+    m = texto.match(/(?:^|[\s\-–:=,/])(\d{1,4})k(?:\s*gs\.?)?(?=$|[\s\-–:,.)/])/i);
+    if (m && parseInt(m[1], 10) >= 5) {
+      precioFormateado = formatearGuaranies(parseInt(m[1], 10) * 1000);
+      texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
+    }
+  }
+
+  // 5. Miles con punto o coma sin "gs" en cualquier posición: 5.000, 50.000, 120.000, 1.200.000
+  if (!precioFormateado) {
+    m = texto.match(/(?:^|[\s\-–:=,/])(\d{1,3}(?:[.,]\d{3})+)(?=$|[\s\-–:,.)/])/);
+    if (m) {
+      precioFormateado = formatearGuaranies(m[1]);
+      texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
+    }
+  }
+
+  // 6. Número entero sin puntos ni "gs" (ej. 120000, 50000, 5000), ignorando años (1990-2039) y modelos (HL-1200, L3110)
+  if (!precioFormateado) {
+    const regexEntero = /(?:^|[\s:=,/])(\d{4,8})(?=$|[\s\-–:,.)/])/g;
+    let matchEntero;
+    while ((matchEntero = regexEntero.exec(texto)) !== null) {
+      const num = parseInt(matchEntero[1], 10);
+      if (num >= 1990 && num <= 2039) continue;
+      if (num >= 10000 || (num >= 5000 && num % 500 === 0)) {
+        precioFormateado = formatearGuaranies(num);
+        texto = (texto.slice(0, matchEntero.index) + " " + texto.slice(matchEntero.index + matchEntero[0].length)).trim();
+        break;
+      }
+    }
+  }
+
+  texto = texto.replace(/\s{2,}/g, " ").replace(/^[\s\-–:,/=]+|[\s\-–:,/=]+$/g, "").trim();
   return { textoSinPrecio: texto, precio: precioFormateado };
+}
+
+function esNombreClienteValido(candidato) {
+  const c = String(candidato || "").replace(/^[\s\-–:,./()]+|[\s\-–:,./()]+$/g, "").trim();
+  if (c.length < 2 || c.length > 32) return false;
+  if (/\d/.test(c)) return false;
+
+  const low = c.toLowerCase();
+  if (PALABRAS_NO_CLIENTE.has(low)) return false;
+
+  const palabras = low.split(/\s+/).filter(Boolean);
+  if (palabras.length === 0 || palabras.length > 4) return false;
+
+  const conectores = new Set(["ña", "na", "don", "doña", "dona", "sr", "sr.", "sra", "sra.", "prof", "prof.", "cliente", "de", "del", "la", "el"]);
+  for (const p of palabras) {
+    const pLimpia = p.replace(/[.,:]/g, "");
+    if (PALABRAS_NO_CLIENTE.has(pLimpia) && !conectores.has(p) && !conectores.has(pLimpia)) {
+      return false;
+    }
+  }
+  if (palabras.every((p) => conectores.has(p) || conectores.has(p.replace(/[.,:]/g, "")))) {
+    return false;
+  }
+  return true;
+}
+
+function capitalizarCliente(c) {
+  return String(c || "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => (w.length > 1 ? w.charAt(0).toUpperCase() + w.slice(1) : w.toUpperCase()))
+    .join(" ");
+}
+
+function obtenerListaClientesConocidos() {
+  const conjunto = new Set(CLIENTES_BASE_CONOCIDOS);
+  if (Array.isArray(servicios)) {
+    servicios.forEach((s) => {
+      const n = String(s.notas || "").trim();
+      if (n && esNombreClienteValido(n)) {
+        conjunto.add(n.toLowerCase());
+      }
+    });
+  }
+  return Array.from(conjunto).sort((a, b) => b.length - a.length);
+}
+
+// EXTRACTOR ROBUSTO DE CLIENTE (etiquetas, paréntesis, separadores, último "de/para", prefijo y nombres conocidos)
+function extraerClienteDeTexto(textoCrudo) {
+  let texto = String(textoCrudo || "").trim();
+  let cliente = "";
+
+  // 1. Etiqueta explícita: "cliente: Ana", "cliente de Derlis", "cl: Honorio", "cli: Pedro"
+  let m = texto.match(/(?:^|[\s\-–,/(])(?:cliente\s+de|cliente|cli\.?|cl\.?)\s*[:\-]?\s*([A-ZÁÉÍÓÚÜÑa-záéíóúüñ.]+(?:\s+[A-ZÁÉÍÓÚÜÑa-záéíóúüñ.]+){0,2})(?=$|[\s\-–,/)])/i);
+  if (m && esNombreClienteValido(m[1])) {
+    cliente = capitalizarCliente(m[1]);
+    texto = (texto.slice(0, m.index) + " " + texto.slice(m.index + m[0].length)).trim();
+  }
+
+  // 2. Entre paréntesis: "(Derlis)", "(Ana)", "(Ña Graciela)"
+  if (!cliente) {
+    const regexParen = /\(\s*([^()]{2,32})\s*\)/g;
+    let mp;
+    while ((mp = regexParen.exec(texto)) !== null) {
+      const cand = mp[1].trim().replace(/^(?:cliente\s*(?:de)?|de|para)\s*[:\-]?\s*/i, "");
+      if (esNombreClienteValido(cand)) {
+        cliente = capitalizarCliente(cand);
+        texto = (texto.slice(0, mp.index) + " " + texto.slice(mp.index + mp[0].length)).trim();
+        break;
+      }
+    }
+  }
+
+  // 3. Después de separador al final: "- Derlis", "/ Ana", "| Honorio", ", Juan Perez"
+  if (!cliente) {
+    m = texto.match(/(?:\s+[\-–/|]\s*|\s*[,;|]\s*)(?:de\s+|para\s+)?([A-ZÁÉÍÓÚÜÑa-záéíóúüñ.]+(?:\s+[A-ZÁÉÍÓÚÜÑa-záéíóúüñ.]+){0,2})\s*$/i);
+    if (m && esNombreClienteValido(m[1])) {
+      cliente = capitalizarCliente(m[1]);
+      texto = texto.slice(0, m.index).trim();
+    }
+  }
+
+  // 4. Después del ÚLTIMO "de" o "para" (corrige el bug de "cambio de pantalla de Derlis")
+  if (!cliente) {
+    const regexDe = /\b(?:de|para)\s+/gi;
+    let ultimoMatch = null;
+    let tmp;
+    while ((tmp = regexDe.exec(texto)) !== null) {
+      ultimoMatch = tmp;
+    }
+    if (ultimoMatch) {
+      const cola = texto.slice(ultimoMatch.index + ultimoMatch[0].length).trim();
+      if (esNombreClienteValido(cola)) {
+        cliente = capitalizarCliente(cola);
+        texto = texto.slice(0, ultimoMatch.index).trim();
+      }
+    }
+  }
+
+  // 5. Prefijo al inicio antes de ":" o " - ": "Derlis: A13 cambio de pantalla"
+  if (!cliente) {
+    m = texto.match(/^([A-ZÁÉÍÓÚÜÑa-záéíóúüñ.]+(?:\s+[A-ZÁÉÍÓÚÜÑa-záéíóúüñ.]+)?)\s*[:\-–]\s+(.+)$/);
+    if (m && esNombreClienteValido(m[1])) {
+      cliente = capitalizarCliente(m[1]);
+      texto = m[2].trim();
+    }
+  }
+
+  // 6. Nombre de cliente habitual/conocido al final sin separador (ej. "A13 cambio de pantalla Derlis")
+  if (!cliente) {
+    const conocidos = obtenerListaClientesConocidos();
+    for (const nombre of conocidos) {
+      const escaped = nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(`(?:^|\\s)(${escaped})\\s*$`, "i");
+      const mc = texto.match(rx);
+      if (mc) {
+        cliente = capitalizarCliente(mc[1]);
+        texto = texto.slice(0, mc.index).trim();
+        break;
+      }
+    }
+  }
+
+  texto = texto.replace(/\s{2,}/g, " ").replace(/^[\s\-–:,/|]+|[\s\-–:,/|]+$/g, "").trim();
+  return { textoSinCliente: texto, cliente };
 }
 
 function deducirIntervencion(trabajo) {
@@ -734,7 +993,6 @@ async function eliminarServicioSupabase(id) {
 }
 
 async function cargarBaseDeDatos() {
-  // 1. Cargar caché local o maestros al instante (nunca quedar en 0)
   let cargadoLocal = false;
   const cache = localStorage.getItem(CACHE_LOCAL_KEY);
   if (cache) {
@@ -753,7 +1011,6 @@ async function cargarBaseDeDatos() {
   poblarSelectores();
   aplicarFiltros();
 
-  // 2. Traer datos reales desde Supabase
   try {
     const soloJunior = await obtenerTodosJuniorDeSupabase();
     if (soloJunior.length > 0) {
@@ -763,7 +1020,6 @@ async function cargarBaseDeDatos() {
       aplicarFiltros();
       actualizarBadgeSupabase("ok");
     } else {
-      // Conectado a Supabase, pero todavía no se migraron los REP- de Junior
       actualizarBadgeSupabase("warn", "Supabase Conectado (Presiona Migrar)");
     }
   } catch (e) {
@@ -1225,10 +1481,26 @@ window.guardarServicioIndividual = async function (e) {
 
   const editId = document.getElementById("inp-edit-id").value.trim().toUpperCase();
   const trabajoRaw = document.getElementById("inp-trabajo").value.trim();
-  const ext = extraerPrecioDeTexto(trabajoRaw);
+  const notasInputRaw = document.getElementById("inp-notas")?.value.trim() || "";
   const pInput = document.getElementById("inp-precio")?.value.trim() || "";
-  const precioFinal = pInput ? formatearGuaranies(pInput) : ext.precio;
-  const trabajoTxt = ext.precio ? ext.textoSinPrecio : trabajoRaw;
+
+  // Extrae precio y cliente automáticamente si se escribieron dentro del trabajo o notas
+  const extPrecioTrabajo = extraerPrecioDeTexto(trabajoRaw);
+  const extPrecioNotas = extraerPrecioDeTexto(notasInputRaw);
+  const precioFinal = pInput
+    ? formatearGuaranies(pInput)
+    : (extPrecioTrabajo.precio || extPrecioNotas.precio || "");
+
+  let trabajoTxt = extPrecioTrabajo.precio ? extPrecioTrabajo.textoSinPrecio : trabajoRaw;
+  let notasTxt = (extPrecioNotas.precio && !pInput) ? extPrecioNotas.textoSinPrecio : notasInputRaw;
+
+  if (!notasTxt) {
+    const extCli = extraerClienteDeTexto(trabajoTxt);
+    if (extCli.cliente) {
+      notasTxt = extCli.cliente;
+      if (extCli.textoSinCliente) trabajoTxt = extCli.textoSinCliente;
+    }
+  }
 
   const datosBase = {
     id: editId || generarNuevoID(1),
@@ -1241,7 +1513,7 @@ window.guardarServicioIndividual = async function (e) {
     repuestos: document.getElementById("inp-repuestos").value.trim() || deducirRepuestos(trabajoTxt),
     precio: precioFinal,
     estado: "Entregado",
-    notas: document.getElementById("inp-notas").value.trim(),
+    notas: notasTxt,
     tecnico: TECNICO_NOMBRE
   };
 
@@ -1288,7 +1560,7 @@ window.eliminarServicio = async function (id) {
 };
 
 // ============================================================================
-// MOTOR INTELIGENTE DE CARGA RÁPIDA SEMANAL (TEXTO -> SUPABASE)
+// MOTOR INTELIGENTE DE CARGA RÁPIDA SEMANAL (EQUIPOS + PRECIOS GS + CLIENTES)
 // ============================================================================
 function detectarEquipoEnTexto(texto) {
   const tLow = texto.toLowerCase();
@@ -1377,27 +1649,19 @@ function contienePalabrasDeTrabajo(texto) {
   return palabrasTrabajo.some((p) => t.includes(p));
 }
 
-function construirRegistroDesdeLinea(lineaTrabajoRaw, fechaActual, contextoEquipo) {
+function construirRegistroDesdeLinea(lineaTrabajoRaw, fechaActual, contextoEquipo, clientePendiente = "") {
   const textoLimpio = lineaTrabajoRaw.replace(/^[-*•\d.)\s]+/, "").trim();
   if (!textoLimpio) return null;
 
+  // 1. Extraer precio en cualquier parte de la línea
   const { textoSinPrecio, precio } = extraerPrecioDeTexto(textoLimpio);
-  const texto = textoSinPrecio || textoLimpio;
 
-  let notas = "";
-  const matchDeCliente = texto.match(/\s+(?:de|cliente:?)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ\s]{2,25})$/i);
-  if (matchDeCliente) {
-    const posibleCliente = matchDeCliente[1].trim();
-    const palabrasTecnicas = [
-      "pantalla", "bateria", "batería", "carga", "pin", "cabezal", "almohadilla",
-      "almohadillas", "flex", "disco", "sistema", "office", "amarillo", "negro",
-      "color", "software", "telefono", "teléfono", "placa", "camara", "cámara", "datos"
-    ];
-    if (!palabrasTecnicas.includes(posibleCliente.toLowerCase())) {
-      notas = posibleCliente.charAt(0).toUpperCase() + posibleCliente.slice(1);
-    }
-  }
+  // 2. Extraer cliente del texto restante
+  const { textoSinCliente, cliente } = extraerClienteDeTexto(textoSinPrecio);
+  const texto = textoSinCliente || textoSinPrecio || textoLimpio;
+  let notas = cliente || clientePendiente || "";
 
+  // 3. Detectar equipo y heredar contexto si corresponde
   const eqDetectado = detectarEquipoEnTexto(texto);
   let categoria = eqDetectado.categoria;
   let marca = eqDetectado.marca;
@@ -1439,6 +1703,7 @@ function procesarTextoLote(textoCompleto, fechaLunesYYYYMMDD) {
   const anioBase = fechaLunesYYYYMMDD.split("-")[0] || "2026";
   let fechaCurso = sumarDiasAFecha(fechaLunesYYYYMMDD, 0);
   let contextoEquipoActual = null;
+  let clientePendiente = "";
   const resultados = [];
 
   const mapaDias = [
@@ -1455,13 +1720,16 @@ function procesarTextoLote(textoCompleto, fechaLunesYYYYMMDD) {
     let l = raw.trim();
     if (!l) continue;
 
+    // Encabezado de fecha sola: "16/11" o "16/11/2026:"
     const matchHeaderFecha = l.match(/^(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\s*:?$/);
     if (matchHeaderFecha) {
       fechaCurso = normalizarFechaNumericaCorta(matchHeaderFecha[1], anioBase);
       contextoEquipoActual = null;
+      clientePendiente = "";
       continue;
     }
 
+    // Encabezado de día: "lunes:", "martes 17/11:"
     let cambioDia = false;
     for (const d of mapaDias) {
       if (d.regex.test(l)) {
@@ -1475,34 +1743,60 @@ function procesarTextoLote(textoCompleto, fechaLunesYYYYMMDD) {
           l = resto;
         }
         contextoEquipoActual = null;
+        clientePendiente = "";
         cambioDia = true;
         break;
       }
     }
     if (cambioDia && !l) continue;
 
+    // Fecha al inicio de la línea: "16/11 - Samsung A13..."
     const matchFechaEnLinea = l.match(/^(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\s*[-:–]\s*(.+)$/);
     if (matchFechaEnLinea) {
       fechaCurso = normalizarFechaNumericaCorta(matchFechaEnLinea[1], anioBase);
       l = matchFechaEnLinea[2].trim();
     }
 
+    // Revisar si la línea es SOLO un precio (ej. "120.000gs" en la línea siguiente)
     const { textoSinPrecio, precio } = extraerPrecioDeTexto(l);
-    const eqInfo = detectarEquipoEnTexto(textoSinPrecio);
-    const tieneTrabajo = contienePalabrasDeTrabajo(textoSinPrecio);
+    if (!textoSinPrecio && precio) {
+      if (resultados.length > 0 && !resultados[resultados.length - 1].precio) {
+        resultados[resultados.length - 1].precio = precio;
+      }
+      continue;
+    }
+
+    // Revisar si la línea es SOLO un cliente (ej. "Cliente: Ana" o "de Derlis" en línea propia)
+    const { textoSinCliente, cliente } = extraerClienteDeTexto(textoSinPrecio);
+    if (!textoSinCliente && cliente) {
+      if (contextoEquipoActual && !contextoEquipoActual.notas) {
+        contextoEquipoActual.notas = cliente;
+      } else if (resultados.length > 0 && resultados[resultados.length - 1].fecha === fechaCurso && !resultados[resultados.length - 1].notas && !/^cliente\b/i.test(l)) {
+        resultados[resultados.length - 1].notas = cliente;
+      } else {
+        clientePendiente = cliente;
+      }
+      continue;
+    }
+
+    // Encabezado de equipo con o sin cliente (ej. "Xiaomi poco M4 pro 5G - Ana")
+    const eqInfo = detectarEquipoEnTexto(textoSinCliente || textoSinPrecio);
+    const tieneTrabajo = contienePalabrasDeTrabajo(textoSinCliente || textoSinPrecio);
 
     if (eqInfo.tieneMarcaOModelo && !tieneTrabajo && !precio) {
       contextoEquipoActual = {
         categoria: eqInfo.categoria,
         marca: eqInfo.marca,
         modelo: eqInfo.modelo || eqInfo.marca,
-        notas: ""
+        notas: cliente || clientePendiente || ""
       };
+      clientePendiente = "";
       continue;
     }
 
-    const item = construirRegistroDesdeLinea(l, fechaCurso, contextoEquipoActual);
+    const item = construirRegistroDesdeLinea(l, fechaCurso, contextoEquipoActual, clientePendiente);
     if (item) {
+      clientePendiente = "";
       if (eqInfo.tieneMarcaOModelo) {
         contextoEquipoActual = {
           categoria: item.categoria,
@@ -1517,6 +1811,18 @@ function procesarTextoLote(textoCompleto, fechaLunesYYYYMMDD) {
 
   return evaluarDuplicadosEnLote(resultados);
 }
+
+// Permite corregir precio o cliente directo en la vista previa antes de guardar
+window.actualizarCampoLote = function (idx, campo, valor) {
+  if (!loteTemporal[idx]) return;
+  if (campo === "precio") {
+    const limpio = String(valor || "").trim();
+    loteTemporal[idx].precio = limpio ? (formatearGuaranies(limpio) || limpio) : "";
+  } else if (campo === "notas") {
+    loteTemporal[idx].notas = String(valor || "").trim();
+  }
+  renderizarPreviewLote();
+};
 
 function renderizarPreviewLote() {
   const tbodyPreview = document.getElementById("tbody-preview-lote");
@@ -1538,11 +1844,13 @@ function renderizarPreviewLote() {
 
   const gruposPorFecha = {};
   let sumaTotalLote = 0;
+  let conClienteCount = 0;
   const itemsConAlerta = [];
 
   loteTemporal.forEach((item, idx) => {
     const monto = obtenerMontoNumerico(item.precio);
     sumaTotalLote += monto;
+    if (item.notas) conClienteCount++;
     if (!gruposPorFecha[item.fecha]) {
       gruposPorFecha[item.fecha] = {
         dia: item.diaSemana || obtenerDiaSemana(item.fecha),
@@ -1609,6 +1917,7 @@ function renderizarPreviewLote() {
                   <strong class="text-slate-900">#${it.idx + 1} · ${escapeHtml(it.marca)} · ${escapeHtml(it.modelo)}</strong>
                   <span class="block text-slate-700">${escapeHtml(it.trabajo)}</span>
                   <span class="text-[10px] text-indigo-700 font-semibold block">${escapeHtml(it.intervencion)}</span>
+                  ${it.notas ? `<span class="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">Cliente: ${escapeHtml(it.notas)}</span>` : ""}
                   ${tieneDup ? `<span class="text-[10px] font-extrabold text-rose-700 block mt-0.5">⚠️ ${escapeHtml(it.alertasDuplicado.map((a) => a.mensaje).join(" | "))}</span>` : ""}
                 </div>
                 <div class="flex flex-col items-end gap-1 shrink-0">
@@ -1623,7 +1932,8 @@ function renderizarPreviewLote() {
   }
 
   const textoTotalGs = sumaTotalLote > 0 ? ` · Total: ${formatearGuaranies(sumaTotalLote)}` : "";
-  if (resumen) resumen.textContent = `¡${loteTemporal.length} servicio(s) en vista previa${textoTotalGs}!`;
+  const textoClientes = conClienteCount > 0 ? ` · ${conClienteCount} con cliente` : "";
+  if (resumen) resumen.textContent = `¡${loteTemporal.length} servicio(s) en vista previa${textoTotalGs}${textoClientes}!`;
 
   if (tbodyPreview) {
     tbodyPreview.innerHTML = loteTemporal.map((item, idx) => {
@@ -1641,11 +1951,25 @@ function renderizarPreviewLote() {
             <div>${escapeHtml(item.trabajo)}</div>
             ${tieneDup ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 text-[10px] font-extrabold">⚠️ ${escapeHtml(item.alertasDuplicado.map((a) => a.mensaje).join(" | "))}</span>` : ""}
           </td>
-          <td class="py-2 px-3 text-right font-extrabold text-emerald-700 whitespace-nowrap">${escapeHtml(item.precio || "-")}</td>
-          <td class="py-2 px-3">
-            <div class="flex items-center justify-between gap-2">
-              <span class="font-semibold text-teal-800">${escapeHtml(item.notas || "-")}</span>
-              <button type="button" onclick="window.quitarFilaDeLote(${idx})" class="text-[11px] px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold cursor-pointer">Quitar</button>
+          <td class="py-2 px-3 text-right whitespace-nowrap">
+            <input
+              type="text"
+              value="${escapeHtml(item.precio || "")}"
+              placeholder="Ej. 50.000"
+              onchange="window.actualizarCampoLote(${idx}, 'precio', this.value)"
+              class="w-24 text-right text-xs font-extrabold text-emerald-800 bg-emerald-50/60 border border-emerald-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+          </td>
+          <td class="py-2 px-3 whitespace-nowrap">
+            <div class="flex items-center justify-between gap-1.5">
+              <input
+                type="text"
+                value="${escapeHtml(item.notas || "")}"
+                placeholder="Cliente..."
+                onchange="window.actualizarCampoLote(${idx}, 'notas', this.value)"
+                class="w-24 text-xs font-semibold text-teal-900 bg-teal-50/50 border border-teal-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-500"
+              />
+              <button type="button" onclick="window.quitarFilaDeLote(${idx})" class="text-[11px] px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold cursor-pointer">Quitar</button>
             </div>
           </td>
         </tr>`;
@@ -1720,7 +2044,7 @@ window.guardarLoteConfirmado = async function () {
     intervencion: item.intervencion,
     trabajo: item.trabajo,
     repuestos: item.repuestos,
-    precio: item.precio,
+    precio: formatearGuaranies(item.precio) || "",
     estado: "Entregado",
     notas: item.notas || "",
     tecnico: TECNICO_NOMBRE
